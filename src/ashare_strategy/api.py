@@ -105,16 +105,30 @@ if FastAPI is not None:
         priority_signal: str = "chip"
 
 
-    app = FastAPI(title="A-Share Trend Screener", version="0.3.0")
+def _resolve_frontend_dir() -> Path | None:
+    candidates = [
+        Path.cwd() / "frontend",
+        Path(__file__).resolve().parents[2] / "frontend",
+        Path(__file__).resolve().parents[1] / "frontend",
+    ]
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    return None
 
-    frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
-    if frontend_dir.exists():
-        app.mount("/preview", StaticFiles(directory=frontend_dir, html=True), name="preview")
+
+app = FastAPI(title="A-Share Trend Screener", version="0.3.0")
+
+frontend_dir = _resolve_frontend_dir()
+if frontend_dir is not None:
+    app.mount("/preview", StaticFiles(directory=frontend_dir, html=True), name="preview")
+
 
 
     @app.get("/")
     def root() -> RedirectResponse:
-        return RedirectResponse(url="/preview/index.html")
+        return RedirectResponse(url="/preview/")
+
 
 
     @app.get("/health")
