@@ -103,6 +103,7 @@ if FastAPI is not None:
         risk_tolerance: str = "balanced"
         valuation_weight: str = "medium"
         priority_signal: str = "chip"
+        playbook_id: str | None = None
 
 
 def _resolve_frontend_dir() -> Path | None:
@@ -161,6 +162,7 @@ if frontend_dir is not None:
                 risk_tolerance=request.risk_tolerance,
                 valuation_weight=request.valuation_weight,
                 priority_signal=request.priority_signal,
+                playbook_id=request.playbook_id,
             )
         )
 

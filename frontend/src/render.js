@@ -28,6 +28,35 @@ export function renderAdvice(container, advice) {
     .join("");
 }
 
+export function renderPlaybooks(container, playbooks, selectedId, recommendedId) {
+  container.innerHTML = (playbooks || [])
+    .map(
+      (item) => `
+        <article class="playbook-card ${item.id === selectedId ? "active" : ""}">
+          <div class="playbook-title-row">
+            <h3>${item.title}</h3>
+            ${
+              item.id === selectedId
+                ? '<span class="playbook-badge">当前方案</span>'
+                : item.id === recommendedId
+                ? '<span class="playbook-badge">推荐</span>'
+                : ""
+            }
+          </div>
+          <p class="playbook-body">${item.thesis}</p>
+          <p class="playbook-fit">${item.fit_for}</p>
+          <div class="playbook-highlights">
+            ${(item.highlights || []).map((tag) => `<span class="playbook-chip">${tag}</span>`).join("")}
+          </div>
+          <button class="playbook-button" data-playbook-id="${item.id}">
+            ${item.id === selectedId ? "已采用" : "采用这套"}
+          </button>
+        </article>
+      `,
+    )
+    .join("");
+}
+
 export function renderParsedRules(container, rules) {
   const groups = new Map();
   (rules || []).forEach((rule) => {

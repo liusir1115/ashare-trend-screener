@@ -164,6 +164,8 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("results", payload)
         self.assertIn("backtest", payload)
         self.assertIsInstance(payload["results"]["items"], list)
+        self.assertIn("playbooks", payload["strategy"])
+        self.assertGreaterEqual(len(payload["strategy"]["playbooks"]), 1)
 
     def test_strategy_changes_affect_fallback_results(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK
@@ -245,6 +247,44 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertEqual(translated[0], "上方筹码压力较小")
         self.assertEqual(translated[1], "均线尚未形成多头排列")
         self.assertIn("量比", translated[2])
+
+    def test_reversal_narrative_generates_playbooks(self) -> None:
+        playbooks, recommended_id, selected_id = mvp_service._build_playbooks(
+            StrategyInput(
+                narrative="反转策略",
+                market_scope="main_board",
+            )
+        )
+        self.assertGreaterEqual(len(playbooks), 3)
+        self.assertEqual(recommended_id, "reversal_base")
+        self.assertIsNone(selected_id)
+
+    def test_selected_playbook_changes_payload(self) -> None:
+        original_force_fallback = mvp_service.FORCE_FALLBACK
+        try:
+            mvp_service.FORCE_FALLBACK = True
+            mvp_service._RESULT_CACHE.clear()
+            base = build_mvp_payload(
+                StrategyInput(
+                    narrative="反转策略",
+                    market_scope="main_board",
+                    playbook_id="reversal_base",
+                )
+            )
+            right = build_mvp_payload(
+                StrategyInput(
+                    narrative="反转策略",
+                    market_scope="main_board",
+                    playbook_id="reversal_right",
+                )
+            )
+        finally:
+            mvp_service.FORCE_FALLBACK = original_force_fallback
+            mvp_service._RESULT_CACHE.clear()
+
+        self.assertNotEqual(base["strategy"]["selected_playbook_id"], right["strategy"]["selected_playbook_id"])
+        self.assertNotEqual(base["strategy"]["summary"], right["strategy"]["summary"])
+        self.assertNotEqual(base["strategy"]["parameters"][0]["value"], right["strategy"]["parameters"][0]["value"])
 
     def test_narrative_alone_can_change_results(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK

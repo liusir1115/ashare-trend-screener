@@ -109,6 +109,96 @@ h2 {
   padding: 22px;
 }
 
+.copilot-card {
+  margin-top: 18px;
+}
+
+.copilot-note {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.playbook-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.playbook-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fbfcfe;
+  display: grid;
+  gap: 10px;
+}
+
+.playbook-card.active {
+  border-color: rgba(23, 78, 166, 0.35);
+  background: #eef4ff;
+}
+
+.playbook-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.playbook-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.playbook-body,
+.playbook-fit {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.playbook-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.playbook-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f3f6fa;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.playbook-button {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.playbook-card.active .playbook-button {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 .section-head {
   display: flex;
   justify-content: space-between;
@@ -492,7 +582,8 @@ td {
   .layout,
   .results-body,
   .summary-grid,
-  .advice-grid {
+  .advice-grid,
+  .playbook-grid {
     grid-template-columns: 1fr;
   }
 

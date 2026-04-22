@@ -1,6 +1,32 @@
 export const fallbackPayload = {
   generated_at: "2026-04-22",
   strategy: {
+    playbook_headline: "系统先给出几种可量化版本，你可以任选其一。",
+    selected_playbook_id: null,
+    recommended_playbook_id: "balanced_default",
+    playbooks: [
+      {
+        id: "balanced_default",
+        title: "平衡试探型",
+        thesis: "先用一版中性参数把方向跑通，再决定往哪边加码。",
+        fit_for: "适合描述还比较模糊的时候先验证。",
+        highlights: ["风险平衡", "波段持有", "优先主板验证"],
+      },
+      {
+        id: "chip_first",
+        title: "筹码优先型",
+        thesis: "先把上方压力和筹码干净度放在第一位。",
+        fit_for: "适合强调上方筹码干净的思路。",
+        highlights: ["上方压力更严", "筹码结构优先", "容忍更少噪音"],
+      },
+      {
+        id: "trend_first",
+        title: "趋势确认型",
+        thesis: "先确认均线、斜率和量能，再决定是否上车。",
+        fit_for: "适合偏右侧确认。",
+        highlights: ["均线多头优先", "放量确认更严", "右侧交易"],
+      },
+    ],
     advice: [
       { title: "推荐市场", value: "先测主板", detail: "先把主板规则跑顺，再扩展到别的市场。" },
       { title: "上方压力", value: "4% - 6%", detail: "先用较稳的压力区间做第一轮验证。" },

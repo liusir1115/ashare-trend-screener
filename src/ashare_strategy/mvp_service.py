@@ -356,6 +356,7 @@ class StrategyInput:
     risk_tolerance: str = "balanced"
     valuation_weight: str = "medium"
     priority_signal: str = "chip"
+    playbook_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -530,6 +531,137 @@ def _strategy_labels(strategy: StrategyInput) -> tuple[str, str, str]:
     return style, holding, priority
 
 
+def _build_playbooks(strategy: StrategyInput) -> tuple[list[dict[str, Any]], str | None, str | None]:
+    text = strategy.narrative.lower()
+    playbooks: list[dict[str, Any]]
+
+    if any(keyword in text for keyword in ["反转", "反弹", "v反", "拐头"]):
+        playbooks = [
+            {
+                "id": "reversal_base",
+                "title": "底部反转型",
+                "thesis": "更强调筑底、均线拐头和压力释放，不追求最强爆量。",
+                "fit_for": "适合想做中短波段反转、接受先试错后确认的场景。",
+                "overrides": {
+                    "style_focus": "rebound",
+                    "holding_period": "swing",
+                    "risk_tolerance": "balanced",
+                    "priority_signal": "base",
+                },
+                "highlights": ["筑底 60-120 天", "量比 >= 1.3", "上方压力 <= 6%"],
+            },
+            {
+                "id": "reversal_left",
+                "title": "左侧试错型",
+                "thesis": "更早介入，放松放量要求，但要求筹码和空间更干净。",
+                "fit_for": "适合偏左侧、愿意用更紧止损换更早位置。",
+                "overrides": {
+                    "style_focus": "rebound",
+                    "holding_period": "short",
+                    "risk_tolerance": "aggressive",
+                    "priority_signal": "chip",
+                },
+                "highlights": ["筑底 40-90 天", "量比 >= 1.1", "止损偏紧"],
+            },
+            {
+                "id": "reversal_right",
+                "title": "右侧确认型",
+                "thesis": "要求站回均线和放量确认，宁可晚一点，也提高胜率。",
+                "fit_for": "适合不想猜底、希望看到明显转强信号再进。",
+                "overrides": {
+                    "style_focus": "trend_start",
+                    "holding_period": "swing",
+                    "risk_tolerance": "conservative",
+                    "priority_signal": "volume",
+                },
+                "highlights": ["量比 >= 1.8", "更看重均线和突破", "上方压力 <= 5%"],
+            },
+        ]
+        recommended_id = "reversal_base"
+    elif any(keyword in text for keyword in ["突破", "启动", "主升", "放量"]):
+        playbooks = [
+            {
+                "id": "breakout_classic",
+                "title": "经典突破型",
+                "thesis": "以平台突破和放量确认为核心，先求确定性。",
+                "fit_for": "适合你原始的趋势启动思路。",
+                "overrides": {
+                    "style_focus": "breakout",
+                    "holding_period": "swing",
+                    "risk_tolerance": "balanced",
+                    "priority_signal": "volume",
+                },
+                "highlights": ["量比 >= 1.8", "突破确认优先", "筑底 60-120 天"],
+            },
+            {
+                "id": "breakout_value",
+                "title": "估值修复突破型",
+                "thesis": "在突破逻辑里额外强调估值不过热和行业匹配。",
+                "fit_for": "适合主板、偏低估修复的趋势启动。",
+                "overrides": {
+                    "style_focus": "breakout",
+                    "holding_period": "trend",
+                    "risk_tolerance": "balanced",
+                    "valuation_weight": "high",
+                    "priority_signal": "valuation",
+                },
+                "highlights": ["估值阈值更严", "持有更久", "行业热度仍需达标"],
+            },
+            {
+                "id": "breakout_fast",
+                "title": "短线爆量型",
+                "thesis": "更强调爆量和短周期反馈，适合快进快出。",
+                "fit_for": "适合强信号博弈，不适合太长持有。",
+                "overrides": {
+                    "style_focus": "breakout",
+                    "holding_period": "short",
+                    "risk_tolerance": "aggressive",
+                    "priority_signal": "volume",
+                },
+                "highlights": ["量比 >= 2.0", "持有 3-7 天", "更强调强信号日"],
+            },
+        ]
+        recommended_id = "breakout_classic"
+    else:
+        playbooks = [
+            {
+                "id": "balanced_default",
+                "title": "平衡试探型",
+                "thesis": "先用一版中性参数把策略跑通，再决定往哪边加码。",
+                "fit_for": "适合描述还比较模糊的时候先验证方向。",
+                "overrides": {},
+                "highlights": ["风险平衡", "波段持有", "优先主板验证"],
+            },
+            {
+                "id": "chip_first",
+                "title": "筹码优先型",
+                "thesis": "先把上方压力和筹码干净度放在第一位。",
+                "fit_for": "适合你原本强调上方筹码干净的思路。",
+                "overrides": {
+                    "priority_signal": "chip",
+                    "risk_tolerance": "conservative",
+                },
+                "highlights": ["上方压力更严", "筹码集中度更重要", "容忍更少噪音"],
+            },
+            {
+                "id": "trend_first",
+                "title": "趋势确认型",
+                "thesis": "先确认均线、斜率和量能，再决定是否上车。",
+                "fit_for": "适合不想太主观猜底，更看重右侧确认。",
+                "overrides": {
+                    "style_focus": "trend_start",
+                    "priority_signal": "volume",
+                    "risk_tolerance": "conservative",
+                },
+                "highlights": ["均线多头优先", "放量确认更严", "适合右侧交易"],
+            },
+        ]
+        recommended_id = "balanced_default"
+
+    selected_id = strategy.playbook_id
+    return playbooks, recommended_id, selected_id
+
+
 def _normalize_weights(config: StrategyConfig) -> None:
     total = (
         config.weights.chip
@@ -552,6 +684,24 @@ def _normalize_weights(config: StrategyConfig) -> None:
 def _config_from_strategy(strategy: StrategyInput) -> StrategyConfig:
     config = deepcopy(StrategyConfig())
     directives = _extract_narrative_directives(strategy.narrative)
+    playbooks, _recommended_playbook_id, selected_playbook_id = _build_playbooks(strategy)
+
+    selected_playbook = next(
+        (item for item in playbooks if item["id"] == selected_playbook_id),
+        None,
+    )
+    if selected_playbook:
+        overrides = selected_playbook.get("overrides", {})
+        strategy = StrategyInput(
+            narrative=strategy.narrative,
+            market_scope=strategy.market_scope,
+            style_focus=overrides.get("style_focus", strategy.style_focus),
+            holding_period=overrides.get("holding_period", strategy.holding_period),
+            risk_tolerance=overrides.get("risk_tolerance", strategy.risk_tolerance),
+            valuation_weight=overrides.get("valuation_weight", strategy.valuation_weight),
+            priority_signal=overrides.get("priority_signal", strategy.priority_signal),
+            playbook_id=selected_playbook_id,
+        )
 
     if strategy.risk_tolerance == "conservative":
         config.chip.max_overhead_pressure = 0.05
@@ -703,6 +853,20 @@ def _config_from_strategy(strategy: StrategyInput) -> StrategyConfig:
 
 
 def build_strategy_plan(strategy: StrategyInput) -> dict[str, Any]:
+    playbooks, recommended_playbook_id, selected_playbook_id = _build_playbooks(strategy)
+    if selected_playbook_id:
+        selected = next((item for item in playbooks if item["id"] == selected_playbook_id), None)
+        if selected:
+            strategy = StrategyInput(
+                narrative=strategy.narrative,
+                market_scope=strategy.market_scope,
+                style_focus=selected.get("overrides", {}).get("style_focus", strategy.style_focus),
+                holding_period=selected.get("overrides", {}).get("holding_period", strategy.holding_period),
+                risk_tolerance=selected.get("overrides", {}).get("risk_tolerance", strategy.risk_tolerance),
+                valuation_weight=selected.get("overrides", {}).get("valuation_weight", strategy.valuation_weight),
+                priority_signal=selected.get("overrides", {}).get("priority_signal", strategy.priority_signal),
+                playbook_id=selected_playbook_id,
+            )
     style, holding, priority = _strategy_labels(strategy)
     config = _config_from_strategy(strategy)
     directives = _extract_narrative_directives(strategy.narrative)
@@ -759,6 +923,9 @@ def build_strategy_plan(strategy: StrategyInput) -> dict[str, Any]:
                 "hint": f"止损 {config.backtest.stop_loss:.0%} / 止盈 {config.backtest.take_profit:.0%}",
             },
         ],
+        "playbooks": playbooks,
+        "selected_playbook_id": selected_playbook_id,
+        "recommended_playbook_id": recommended_playbook_id,
         "parsed_rules": _build_parsed_rules(directives),
         "summary": (
             f"当前策略按“{style} + {holding}”理解，优先在"

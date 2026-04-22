@@ -4,6 +4,7 @@ import {
   renderCandidates,
   renderParsedRules,
   renderParameters,
+  renderPlaybooks,
   renderResultsTable,
   renderScope,
   renderSummaryGrid,
@@ -14,6 +15,7 @@ import { buildStrategyState } from "./strategy-engine.js";
 import { fallbackPayload } from "./fallback-data.js";
 
 const strategyForm = document.getElementById("strategyForm");
+let currentPlaybookId = null;
 
 const elements = {
   narrative: document.getElementById("strategyNarrative"),
@@ -26,6 +28,9 @@ const elements = {
   generatedAt: document.getElementById("generatedAt"),
   scopeLabel: document.getElementById("scopeLabel"),
   scopeStatus: document.getElementById("scopeStatus"),
+  playbookStatus: document.getElementById("playbookStatus"),
+  playbookHeadline: document.getElementById("playbookHeadline"),
+  playbookGrid: document.getElementById("playbookGrid"),
   scopeNote: document.getElementById("scopeNote"),
   adviceGrid: document.getElementById("adviceGrid"),
   parsedRules: document.getElementById("parsedRules"),
@@ -46,6 +51,7 @@ function readFormValues() {
     risk: elements.riskTolerance.value,
     valuation: elements.valuationWeight.value,
     priority: elements.prioritySignal.value,
+    playbookId: currentPlaybookId,
   };
 }
 
@@ -70,6 +76,16 @@ function applyPayload(payload, scope = readFormValues().scope) {
     elements.scopeStatus,
     payload.generated_at,
     results.live_data ? "实时数据" : "演示数据",
+  );
+  currentPlaybookId = strategy.selected_playbook_id ?? currentPlaybookId;
+  elements.playbookHeadline.textContent =
+    strategy.playbook_headline || "系统先给出几种可量化版本，你可以任选其一。";
+  elements.playbookStatus.textContent = currentPlaybookId ? "已选择方案" : "等待选择";
+  renderPlaybooks(
+    elements.playbookGrid,
+    strategy.playbooks || [],
+    currentPlaybookId,
+    strategy.recommended_playbook_id || null,
   );
   renderAdvice(elements.adviceGrid, strategy.advice);
   renderParsedRules(elements.parsedRules, strategy.parsed_rules);
@@ -101,6 +117,15 @@ async function renderAll() {
   const localPlan = buildStrategyState(formValues);
 
   renderAdvice(elements.adviceGrid, localPlan.advice);
+  elements.playbookHeadline.textContent =
+    localPlan.playbook_headline || "系统先给出几种可量化版本，你可以任选其一。";
+  elements.playbookStatus.textContent = currentPlaybookId ? "已选择方案" : "等待选择";
+  renderPlaybooks(
+    elements.playbookGrid,
+    localPlan.playbooks || [],
+    currentPlaybookId,
+    localPlan.recommended_playbook_id || null,
+  );
   renderParsedRules(elements.parsedRules, localPlan.parsed_rules);
   renderParameters(elements.parameterGrid, localPlan.parameters);
   renderSummaryText(elements.strategySummary, localPlan.summary);
@@ -117,6 +142,7 @@ async function renderAll() {
         risk_tolerance: formValues.risk,
         valuation_weight: formValues.valuation,
         priority_signal: formValues.priority,
+        playbook_id: currentPlaybookId,
       }),
     });
     applyPayload(payload, formValues.scope);
@@ -140,6 +166,15 @@ strategyForm.addEventListener("submit", (event) => {
   renderAll().then(() => {
     document.querySelector(".results-card").scrollIntoView({ behavior: "smooth", block: "start" });
   });
+});
+
+elements.playbookGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-playbook-id]");
+  if (!button) {
+    return;
+  }
+  currentPlaybookId = button.dataset.playbookId;
+  renderAll();
 });
 
 loadBootstrap();
