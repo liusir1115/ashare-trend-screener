@@ -5,22 +5,25 @@ from dataclasses import dataclass
 from datetime import date
 import hashlib
 import os
-import re
 import time
 from typing import Any
 
 from ashare_strategy.config import StrategyConfig
 from ashare_strategy.market import MARKET_SCOPE_ALL
 from ashare_strategy.models import DailySnapshot
+from ashare_strategy.mvp_text import (
+    NarrativeDirectives,
+    PRIORITY_LABELS,
+    SCOPE_LABELS,
+    build_parsed_rules,
+    build_playbooks,
+    extract_narrative_directives,
+    strategy_labels,
+    translate_reason,
+    translate_reasons,
+)
 from ashare_strategy.providers.akshare_provider import AKShareProvider
 from ashare_strategy.strategy import ScreeningEngine
-
-SCOPE_LABELS = {
-    "all": "全市场",
-    "main_board": "主板",
-    "star_market": "科创板",
-    "growth_board": "成长板",
-}
 
 LIVE_SAMPLE_SYMBOLS = {
     "all": ["600519", "600036", "300750", "688981", "601318", "002594"],
@@ -32,6 +35,14 @@ LIVE_SAMPLE_SYMBOLS = {
 CACHE_TTL_SECONDS = int(os.getenv("MVP_CACHE_TTL_SECONDS", "900"))
 FORCE_FALLBACK = os.getenv("MVP_FORCE_FALLBACK", "").strip().lower() in {"1", "true", "yes"}
 _RESULT_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+
+# 这些别名是为了兼容已有测试和旧调用。
+_build_parsed_rules = build_parsed_rules
+_build_playbooks = build_playbooks
+_extract_narrative_directives = extract_narrative_directives
+_strategy_labels = strategy_labels
+_translate_reason = translate_reason
+_translate_reasons = translate_reasons
 
 
 def _snapshot(
@@ -359,307 +370,27 @@ class StrategyInput:
     playbook_id: str | None = None
 
 
-@dataclass(slots=True)
-class NarrativeDirectives:
-    min_base_days: int | None = None
-    ideal_base_days: int | None = None
-    max_overhead_pressure: float | None = None
-    min_volume_ratio: float | None = None
-    stop_loss: float | None = None
-    take_profit: float | None = None
-    require_limit_up: bool = False
-    prefer_left_side: bool = False
-    prefer_right_side: bool = False
-    require_hot_sector: bool = False
-    emphasize_valuation: bool = False
-    emphasize_chip: bool = False
-    emphasize_trend: bool = False
-    notes: list[str] | None = None
+def _apply_playbook_overrides(strategy: StrategyInput) -> StrategyInput:
+    playbooks, _recommended_id, selected_id = _build_playbooks(strategy)
+    if not selected_id:
+        return strategy
 
+    selected_playbook = next((item for item in playbooks if item["id"] == selected_id), None)
+    if not selected_playbook:
+        return strategy
 
-def _build_parsed_rules(directives: NarrativeDirectives) -> list[dict[str, str]]:
-    rules: list[dict[str, str]] = []
-    if directives.min_base_days is not None:
-        rules.append({"group": "数值规则", "label": f"筑底时长 >= {directives.min_base_days} 天"})
-    if directives.max_overhead_pressure is not None:
-        rules.append({"group": "数值规则", "label": f"上方压力 <= {directives.max_overhead_pressure:.0%}"})
-    if directives.min_volume_ratio is not None:
-        rules.append({"group": "数值规则", "label": f"量比 >= {directives.min_volume_ratio:.1f}"})
-    if directives.stop_loss is not None:
-        rules.append({"group": "交易管理", "label": f"止损 {directives.stop_loss:.0%}"})
-    if directives.take_profit is not None:
-        rules.append({"group": "交易管理", "label": f"止盈 {directives.take_profit:.0%}"})
-    if directives.require_limit_up:
-        rules.append({"group": "交易管理", "label": "要求涨停或回封确认"})
-    if directives.prefer_left_side:
-        rules.append({"group": "风格偏好", "label": "偏好左侧切入"})
-    if directives.prefer_right_side:
-        rules.append({"group": "风格偏好", "label": "偏好右侧确认"})
-    if directives.require_hot_sector:
-        rules.append({"group": "风格偏好", "label": "优先热门行业"})
-    if directives.emphasize_valuation:
-        rules.append({"group": "风格偏好", "label": "强调估值修复"})
-    if directives.emphasize_chip:
-        rules.append({"group": "风格偏好", "label": "强调筹码结构"})
-    if directives.emphasize_trend:
-        rules.append({"group": "风格偏好", "label": "强调趋势与均线"})
-    return rules or [{"group": "系统判断", "label": "未识别到额外文字约束"}]
-
-
-def _translate_reason(reason: str) -> str:
-    exact_map = {
-        "Low overhead chip pressure": "上方筹码压力较小",
-        "Chip distribution is compact": "筹码分布较集中",
-        "Limit-up confirmation appeared": "出现涨停确认",
-        "Re-sealed after opening intraday": "盘中开板后回封",
-        "Volume expanded sharply": "量能明显放大",
-        "Base-building period is long enough": "筑底时长较充分",
-        "There is still room to prior highs": "距离前高仍有空间",
-        "Sector heat is elevated": "行业热度较高",
-        "moving averages are not in bullish alignment": "均线尚未形成多头排列",
-        "missing breakout confirmation": "突破确认不足",
-        "limit-up style confirmation required by config": "当前策略要求涨停或回封确认",
-    }
-    if reason in exact_map:
-        return exact_map[reason]
-
-    patterns: list[tuple[str, str]] = [
-        (r"overhead_pressure=([\d.]+%) above ([\d.]+%)", "上方压力 \\1 高于阈值 \\2"),
-        (r"chip_compact=([\d.]+%) above ([\d.]+%)", "筹码集中度区间 \\1 高于阈值 \\2"),
-        (r"winner_rate=([\d.]+%) below ([\d.]+%)", "获利盘比例 \\1 低于阈值 \\2"),
-        (r"ma20_slope=([-\d.]+) below ([-\d.]+)", "MA20 斜率 \\1 低于阈值 \\2"),
-        (r"ma60_slope=([-\d.]+) below ([-\d.]+)", "MA60 斜率 \\1 低于阈值 \\2"),
-        (r"volume_ratio=([\d.]+) below ([\d.]+)", "量比 \\1 低于阈值 \\2"),
-        (r"base_days=(\d+) below (\d+)", "筑底天数 \\1 低于阈值 \\2"),
-        (r"range_90=([\d.]+%) above ([\d.]+%)", "近 90 天振幅 \\1 高于阈值 \\2"),
-        (r"close/high_250=([\d.]+) above ([\d.]+)", "当前价格距离 250 日高点过近：\\1，高于阈值 \\2"),
-        (r"upside_to_high_250=([\d.]+%) below ([\d.]+%)", "距离前高空间 \\1 低于阈值 \\2"),
-        (r"industry_pe_ratio=([\d.]+) above ([\d.]+)", "行业相对 PE \\1 高于阈值 \\2"),
-        (r"industry_pb_ratio=([\d.]+) above ([\d.]+)", "行业相对 PB \\1 高于阈值 \\2"),
-        (r"industry_hot_score=([\d.]+) below ([\d.]+)", "行业热度 \\1 低于阈值 \\2"),
-        (r"board_hot_score=([\d.]+) below ([\d.]+)", "板块热度 \\1 低于阈值 \\2"),
-    ]
-    for pattern, replacement in patterns:
-        if re.search(pattern, reason):
-            return re.sub(pattern, replacement, reason)
-    return reason
-
-
-def _translate_reasons(reasons: list[str]) -> list[str]:
-    return [_translate_reason(reason) for reason in reasons]
-
-
-def _extract_narrative_directives(narrative: str) -> NarrativeDirectives:
-    text = narrative.lower()
-    directives = NarrativeDirectives(notes=[])
-
-    if month_match := re.search(r"(?:筑底|横盘|盘整|底部).{0,10}?(\d{1,2})\s*个?月", text):
-        months = int(month_match.group(1))
-        directives.min_base_days = months * 20
-        directives.ideal_base_days = months * 20 + 20
-        directives.notes.append(f"识别到筑底时长约 {months} 个月")
-    elif day_match := re.search(r"(?:筑底|横盘|盘整|底部).{0,10}?(\d{2,3})\s*天", text):
-        days = int(day_match.group(1))
-        directives.min_base_days = days
-        directives.ideal_base_days = days + 20
-        directives.notes.append(f"识别到筑底时长约 {days} 天")
-
-    if pressure_match := re.search(r"(?:上方压力|压力|套牢盘).{0,8}?(\d{1,2}(?:\.\d+)?)\s*%", text):
-        directives.max_overhead_pressure = float(pressure_match.group(1)) / 100
-        directives.notes.append(f"识别到上方压力阈值 {pressure_match.group(1)}%")
-
-    if volume_match := re.search(r"(?:量比|放量).{0,8}?(\d(?:\.\d+)?)", text):
-        directives.min_volume_ratio = float(volume_match.group(1))
-        directives.notes.append(f"识别到量比门槛 {volume_match.group(1)}")
-
-    if stop_loss_match := re.search(r"(?:止损|回撤).{0,8}?(\d{1,2}(?:\.\d+)?)\s*%", text):
-        directives.stop_loss = -float(stop_loss_match.group(1)) / 100
-        directives.notes.append(f"识别到止损 {stop_loss_match.group(1)}%")
-
-    if take_profit_match := re.search(r"(?:止盈|目标收益).{0,8}?(\d{1,2}(?:\.\d+)?)\s*%", text):
-        directives.take_profit = float(take_profit_match.group(1)) / 100
-        directives.notes.append(f"识别到止盈 {take_profit_match.group(1)}%")
-
-    if any(keyword in text for keyword in ["涨停", "首板", "回封"]):
-        directives.require_limit_up = True
-        directives.notes.append("识别到涨停/回封偏好")
-
-    if "左侧" in text:
-        directives.prefer_left_side = True
-        directives.notes.append("识别到左侧切入偏好")
-
-    if "右侧" in text:
-        directives.prefer_right_side = True
-        directives.notes.append("识别到右侧确认偏好")
-
-    if any(keyword in text for keyword in ["热门行业", "主线", "景气", "热点板块"]):
-        directives.require_hot_sector = True
-        directives.notes.append("识别到热门行业要求")
-
-    if any(keyword in text for keyword in ["低估", "估值修复", "便宜", "估值"]):
-        directives.emphasize_valuation = True
-        directives.notes.append("识别到估值修复要求")
-
-    if "筹码" in text:
-        directives.emphasize_chip = True
-        directives.notes.append("识别到筹码结构要求")
-
-    if any(keyword in text for keyword in ["多头排列", "均线", "趋势"]):
-        directives.emphasize_trend = True
-        directives.notes.append("识别到趋势/均线要求")
-
-    return directives
-
-
-def _strategy_labels(strategy: StrategyInput) -> tuple[str, str, str]:
-    style = {
-        "breakout": "平台突破",
-        "trend_start": "趋势启动",
-        "rebound": "底部反转",
-    }.get(strategy.style_focus, strategy.style_focus)
-    holding = {
-        "swing": "波段持有",
-        "short": "短线快进快出",
-        "trend": "趋势跟随",
-    }.get(strategy.holding_period, strategy.holding_period)
-    priority = {
-        "chip": "筹码结构",
-        "volume": "放量突破",
-        "base": "筑底时长",
-        "valuation": "估值修复",
-    }.get(strategy.priority_signal, strategy.priority_signal)
-    return style, holding, priority
-
-
-def _build_playbooks(strategy: StrategyInput) -> tuple[list[dict[str, Any]], str | None, str | None]:
-    text = strategy.narrative.lower()
-    playbooks: list[dict[str, Any]]
-
-    if any(keyword in text for keyword in ["反转", "反弹", "v反", "拐头"]):
-        playbooks = [
-            {
-                "id": "reversal_base",
-                "title": "底部反转型",
-                "thesis": "更强调筑底、均线拐头和压力释放，不追求最强爆量。",
-                "fit_for": "适合想做中短波段反转、接受先试错后确认的场景。",
-                "overrides": {
-                    "style_focus": "rebound",
-                    "holding_period": "swing",
-                    "risk_tolerance": "balanced",
-                    "priority_signal": "base",
-                },
-                "highlights": ["筑底 60-120 天", "量比 >= 1.3", "上方压力 <= 6%"],
-            },
-            {
-                "id": "reversal_left",
-                "title": "左侧试错型",
-                "thesis": "更早介入，放松放量要求，但要求筹码和空间更干净。",
-                "fit_for": "适合偏左侧、愿意用更紧止损换更早位置。",
-                "overrides": {
-                    "style_focus": "rebound",
-                    "holding_period": "short",
-                    "risk_tolerance": "aggressive",
-                    "priority_signal": "chip",
-                },
-                "highlights": ["筑底 40-90 天", "量比 >= 1.1", "止损偏紧"],
-            },
-            {
-                "id": "reversal_right",
-                "title": "右侧确认型",
-                "thesis": "要求站回均线和放量确认，宁可晚一点，也提高胜率。",
-                "fit_for": "适合不想猜底、希望看到明显转强信号再进。",
-                "overrides": {
-                    "style_focus": "trend_start",
-                    "holding_period": "swing",
-                    "risk_tolerance": "conservative",
-                    "priority_signal": "volume",
-                },
-                "highlights": ["量比 >= 1.8", "更看重均线和突破", "上方压力 <= 5%"],
-            },
-        ]
-        recommended_id = "reversal_base"
-    elif any(keyword in text for keyword in ["突破", "启动", "主升", "放量"]):
-        playbooks = [
-            {
-                "id": "breakout_classic",
-                "title": "经典突破型",
-                "thesis": "以平台突破和放量确认为核心，先求确定性。",
-                "fit_for": "适合你原始的趋势启动思路。",
-                "overrides": {
-                    "style_focus": "breakout",
-                    "holding_period": "swing",
-                    "risk_tolerance": "balanced",
-                    "priority_signal": "volume",
-                },
-                "highlights": ["量比 >= 1.8", "突破确认优先", "筑底 60-120 天"],
-            },
-            {
-                "id": "breakout_value",
-                "title": "估值修复突破型",
-                "thesis": "在突破逻辑里额外强调估值不过热和行业匹配。",
-                "fit_for": "适合主板、偏低估修复的趋势启动。",
-                "overrides": {
-                    "style_focus": "breakout",
-                    "holding_period": "trend",
-                    "risk_tolerance": "balanced",
-                    "valuation_weight": "high",
-                    "priority_signal": "valuation",
-                },
-                "highlights": ["估值阈值更严", "持有更久", "行业热度仍需达标"],
-            },
-            {
-                "id": "breakout_fast",
-                "title": "短线爆量型",
-                "thesis": "更强调爆量和短周期反馈，适合快进快出。",
-                "fit_for": "适合强信号博弈，不适合太长持有。",
-                "overrides": {
-                    "style_focus": "breakout",
-                    "holding_period": "short",
-                    "risk_tolerance": "aggressive",
-                    "priority_signal": "volume",
-                },
-                "highlights": ["量比 >= 2.0", "持有 3-7 天", "更强调强信号日"],
-            },
-        ]
-        recommended_id = "breakout_classic"
-    else:
-        playbooks = [
-            {
-                "id": "balanced_default",
-                "title": "平衡试探型",
-                "thesis": "先用一版中性参数把策略跑通，再决定往哪边加码。",
-                "fit_for": "适合描述还比较模糊的时候先验证方向。",
-                "overrides": {},
-                "highlights": ["风险平衡", "波段持有", "优先主板验证"],
-            },
-            {
-                "id": "chip_first",
-                "title": "筹码优先型",
-                "thesis": "先把上方压力和筹码干净度放在第一位。",
-                "fit_for": "适合你原本强调上方筹码干净的思路。",
-                "overrides": {
-                    "priority_signal": "chip",
-                    "risk_tolerance": "conservative",
-                },
-                "highlights": ["上方压力更严", "筹码集中度更重要", "容忍更少噪音"],
-            },
-            {
-                "id": "trend_first",
-                "title": "趋势确认型",
-                "thesis": "先确认均线、斜率和量能，再决定是否上车。",
-                "fit_for": "适合不想太主观猜底，更看重右侧确认。",
-                "overrides": {
-                    "style_focus": "trend_start",
-                    "priority_signal": "volume",
-                    "risk_tolerance": "conservative",
-                },
-                "highlights": ["均线多头优先", "放量确认更严", "适合右侧交易"],
-            },
-        ]
-        recommended_id = "balanced_default"
-
-    selected_id = strategy.playbook_id
-    return playbooks, recommended_id, selected_id
+    overrides = selected_playbook.get("overrides", {})
+    # 这里是把用户选中的方案正式套到策略里，后面都按这套口径跑。
+    return StrategyInput(
+        narrative=strategy.narrative,
+        market_scope=strategy.market_scope,
+        style_focus=overrides.get("style_focus", strategy.style_focus),
+        holding_period=overrides.get("holding_period", strategy.holding_period),
+        risk_tolerance=overrides.get("risk_tolerance", strategy.risk_tolerance),
+        valuation_weight=overrides.get("valuation_weight", strategy.valuation_weight),
+        priority_signal=overrides.get("priority_signal", strategy.priority_signal),
+        playbook_id=selected_id,
+    )
 
 
 def _normalize_weights(config: StrategyConfig) -> None:
@@ -675,6 +406,7 @@ def _normalize_weights(config: StrategyConfig) -> None:
         config.weights.base = 0.20
         config.weights.valuation = 0.15
         return
+
     config.weights.chip = round(config.weights.chip / total, 4)
     config.weights.technical = round(config.weights.technical / total, 4)
     config.weights.base = round(config.weights.base / total, 4)
@@ -682,26 +414,9 @@ def _normalize_weights(config: StrategyConfig) -> None:
 
 
 def _config_from_strategy(strategy: StrategyInput) -> StrategyConfig:
+    strategy = _apply_playbook_overrides(strategy)
     config = deepcopy(StrategyConfig())
     directives = _extract_narrative_directives(strategy.narrative)
-    playbooks, _recommended_playbook_id, selected_playbook_id = _build_playbooks(strategy)
-
-    selected_playbook = next(
-        (item for item in playbooks if item["id"] == selected_playbook_id),
-        None,
-    )
-    if selected_playbook:
-        overrides = selected_playbook.get("overrides", {})
-        strategy = StrategyInput(
-            narrative=strategy.narrative,
-            market_scope=strategy.market_scope,
-            style_focus=overrides.get("style_focus", strategy.style_focus),
-            holding_period=overrides.get("holding_period", strategy.holding_period),
-            risk_tolerance=overrides.get("risk_tolerance", strategy.risk_tolerance),
-            valuation_weight=overrides.get("valuation_weight", strategy.valuation_weight),
-            priority_signal=overrides.get("priority_signal", strategy.priority_signal),
-            playbook_id=selected_playbook_id,
-        )
 
     if strategy.risk_tolerance == "conservative":
         config.chip.max_overhead_pressure = 0.05
@@ -854,23 +569,11 @@ def _config_from_strategy(strategy: StrategyInput) -> StrategyConfig:
 
 def build_strategy_plan(strategy: StrategyInput) -> dict[str, Any]:
     playbooks, recommended_playbook_id, selected_playbook_id = _build_playbooks(strategy)
-    if selected_playbook_id:
-        selected = next((item for item in playbooks if item["id"] == selected_playbook_id), None)
-        if selected:
-            strategy = StrategyInput(
-                narrative=strategy.narrative,
-                market_scope=strategy.market_scope,
-                style_focus=selected.get("overrides", {}).get("style_focus", strategy.style_focus),
-                holding_period=selected.get("overrides", {}).get("holding_period", strategy.holding_period),
-                risk_tolerance=selected.get("overrides", {}).get("risk_tolerance", strategy.risk_tolerance),
-                valuation_weight=selected.get("overrides", {}).get("valuation_weight", strategy.valuation_weight),
-                priority_signal=selected.get("overrides", {}).get("priority_signal", strategy.priority_signal),
-                playbook_id=selected_playbook_id,
-            )
-    style, holding, priority = _strategy_labels(strategy)
-    config = _config_from_strategy(strategy)
-    directives = _extract_narrative_directives(strategy.narrative)
-    parsed_signal = "，".join(directives.notes[:3]) if directives.notes else "未识别到额外文字约束"
+    effective_strategy = _apply_playbook_overrides(strategy)
+    style_label, holding_label, priority_label = _strategy_labels(effective_strategy)
+    config = _config_from_strategy(effective_strategy)
+    directives = _extract_narrative_directives(effective_strategy.narrative)
+    parsed_signal = "；".join(directives.notes[:3]) if directives.notes else "未识别到额外文字约束"
 
     return {
         "advice": [
@@ -878,12 +581,12 @@ def build_strategy_plan(strategy: StrategyInput) -> dict[str, Any]:
                 "title": "推荐市场",
                 "value": (
                     "先测主板"
-                    if strategy.market_scope == "main_board"
+                    if effective_strategy.market_scope == "main_board"
                     else "单测科创板"
-                    if strategy.market_scope == "star_market"
+                    if effective_strategy.market_scope == "star_market"
                     else "分市场分别测试"
                 ),
-                "detail": "不同市场波动差异大，参数不要直接混用。",
+                "detail": "不同市场波动差别大，参数不要直接混用。",
             },
             {
                 "title": "上方压力",
@@ -898,14 +601,14 @@ def build_strategy_plan(strategy: StrategyInput) -> dict[str, Any]:
             {
                 "title": "文字识别",
                 "value": parsed_signal,
-                "detail": "这部分来自你输入的自由描述，不是下拉框固定值。",
+                "detail": "这里展示的是系统从你输入的话里读到的东西。",
             },
         ],
         "parameters": [
             {
                 "label": "核心风格",
-                "value": f"{style} / {holding}",
-                "hint": f"当前把 {priority} 作为主要驱动信号。",
+                "value": f"{style_label} / {holding_label}",
+                "hint": f"当前把“{priority_label}”当作主要驱动信号。",
             },
             {
                 "label": "筑底时长",
@@ -915,7 +618,7 @@ def build_strategy_plan(strategy: StrategyInput) -> dict[str, Any]:
             {
                 "label": "估值阈值",
                 "value": f"PE <= {config.valuation.max_industry_pe_ratio:.2f}x 行业",
-                "hint": "估值权重越高，对行业相对估值的要求越严。",
+                "hint": "估值权重越高，对相对估值的要求越严。",
             },
             {
                 "label": "回测口径",
@@ -927,12 +630,24 @@ def build_strategy_plan(strategy: StrategyInput) -> dict[str, Any]:
         "selected_playbook_id": selected_playbook_id,
         "recommended_playbook_id": recommended_playbook_id,
         "parsed_rules": _build_parsed_rules(directives),
+        "playbook_headline": _build_playbook_headline(effective_strategy.narrative, playbooks),
         "summary": (
-            f"当前策略按“{style} + {holding}”理解，优先在"
-            f"{SCOPE_LABELS.get(strategy.market_scope, strategy.market_scope)}里验证“{priority}”是否有效。"
-            f"系统会根据你的风险偏好、估值要求和文字描述动态调整阈值。"
+            f"当前策略按“{style_label} + {holding_label}”理解，优先在"
+            f"{SCOPE_LABELS.get(effective_strategy.market_scope, effective_strategy.market_scope)}里验证"
+            f"“{priority_label}”是否有效。系统会根据你的风险偏好、估值要求和文字描述动态调参数。"
         ),
     }
+
+
+def _build_playbook_headline(narrative: str, playbooks: list[dict[str, Any]]) -> str:
+    narrative_lower = narrative.lower()
+    if any(keyword in narrative_lower for keyword in ["反转", "反弹", "v反", "拐头"]):
+        return "我把“反转策略”拆成了几套常见做法，你可以先选一套再看结果。"
+    if any(keyword in narrative_lower for keyword in ["突破", "启动", "主升", "放量"]):
+        return "这段描述更像趋势启动，我先给你几套突破版本。"
+    if playbooks:
+        return "你的描述还比较模糊，我先给你几套可落地的默认版本。"
+    return "系统会先给出几套可量化方案，再由你决定采用哪一套。"
 
 
 def _serialize_screening_result(result: Any) -> dict[str, Any]:
@@ -970,6 +685,7 @@ def _cache_key(strategy: StrategyInput) -> str:
             strategy.risk_tolerance,
             strategy.valuation_weight,
             strategy.priority_signal,
+            strategy.playbook_id or "no-playbook",
             narrative_hash,
             "fallback" if FORCE_FALLBACK else "live",
         ]
@@ -983,7 +699,7 @@ def _scope_note(scope: str, live_data: bool) -> str:
     if scope == "star_market":
         return prefix + " 科创板波动更大，建议与主板分开回测。"
     if scope == "growth_board":
-        return prefix + " 成长板更适合单独观察，不要与主板混合阈值。"
+        return prefix + " 成长板更适合单独观察，不建议与主板共用一套阈值。"
     return prefix + " 全市场结果更适合看分布，不适合直接混成一套参数。"
 
 

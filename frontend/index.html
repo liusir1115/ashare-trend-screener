@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>A 股策略助手</title>
+    <title>A股策略助手</title>
     <link rel="stylesheet" href="./styles/app.css" />
   </head>
   <body>
@@ -11,8 +11,8 @@
       <header class="header">
         <div>
           <p class="caption">A-Share Strategy MVP</p>
-          <h1>A 股策略助手</h1>
-          <p class="subtitle">输入策略，生成参数建议，再看候选结果。</p>
+          <h1>A股策略助手</h1>
+          <p class="subtitle">先写想法，再看系统怎么理解，最后再看候选结果。</p>
         </div>
         <div class="status-line">
           <span class="status-chip" id="scopeStatus">准备就绪</span>
@@ -32,7 +32,7 @@
               <textarea
                 id="strategyNarrative"
                 rows="6"
-                placeholder="例如：主板里找筑底 3 个月以上、上方压力小、放量突破、估值还没完全修复的票。"
+                placeholder="例如：主板里找筑底3个月以上、上方压力小、放量突破、估值还没完全修复的票。"
               >我想先从主板里找几个筑底数月后刚开始走强、上方压力较轻、估值还没完全修复的票。</textarea>
             </label>
 
@@ -102,16 +102,20 @@
             <h2>策略解析</h2>
             <span class="scope-badge" id="scopeLabel">主板</span>
           </div>
+
           <div class="section-split">
             <div class="section-minihead">你输入的要求</div>
           </div>
+
           <div class="parsed-box">
             <p class="mini-title">已识别约束</p>
             <div class="parsed-rules" id="parsedRules"></div>
           </div>
+
           <div class="section-split">
             <div class="section-minihead">系统推导参数</div>
           </div>
+
           <div class="advice-grid" id="adviceGrid"></div>
           <div class="strategy-note" id="strategySummary"></div>
           <div class="parameter-list" id="parameterGrid"></div>
@@ -120,8 +124,8 @@
 
       <section class="card copilot-card">
         <div class="section-head">
-          <h2>AI 策略共创</h2>
-          <span class="scope-badge" id="playbookStatus">等待分析</span>
+          <h2>AI策略共创</h2>
+          <span class="scope-badge" id="playbookStatus">等待选择</span>
         </div>
         <p class="copilot-note" id="playbookHeadline">输入模糊策略后，系统会先给出几种可量化方案。</p>
         <div class="playbook-grid" id="playbookGrid"></div>

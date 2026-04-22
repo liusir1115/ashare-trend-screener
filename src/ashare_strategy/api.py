@@ -9,7 +9,7 @@ try:
     from fastapi.responses import RedirectResponse
     from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel, Field
-except ImportError as exc:  # pragma: no cover - exercised only when API deps are missing
+except ImportError as exc:  # pragma: no cover
     FastAPI = None
     BaseModel = object
     Field = None
@@ -107,14 +107,14 @@ if FastAPI is not None:
 
 
 def _resolve_frontend_dir() -> Path | None:
-    candidates = [
+    candidate_paths = [
         Path.cwd() / "frontend",
         Path(__file__).resolve().parents[2] / "frontend",
         Path(__file__).resolve().parents[1] / "frontend",
     ]
-    for candidate in candidates:
-        if candidate.exists() and candidate.is_dir():
-            return candidate
+    for candidate_path in candidate_paths:
+        if candidate_path.exists() and candidate_path.is_dir():
+            return candidate_path
     return None
 
 
@@ -124,32 +124,25 @@ frontend_dir = _resolve_frontend_dir()
 if frontend_dir is not None:
     app.mount("/preview", StaticFiles(directory=frontend_dir, html=True), name="preview")
 
-
-
     @app.get("/")
     def root() -> RedirectResponse:
         return RedirectResponse(url="/preview/")
-
-
 
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-
     @app.get("/config/default")
     def default_config() -> dict[str, Any]:
         return StrategyConfig().to_dict()
-
 
     @app.get("/api/mvp/bootstrap")
     def bootstrap() -> dict[str, Any]:
         return build_mvp_payload(
             StrategyInput(
-                narrative="我想先从主板里找几个月筑底后刚开始走强、上方压力轻、估值还没完全修复的票。"
+                narrative="我想先从主板里找几个筑底数月后刚开始走强、上方压力较轻、估值还没完全修复的票。"
             )
         )
-
 
     @app.post("/api/mvp/strategy")
     def strategy_plan(request: StrategyRequest) -> dict[str, Any]:
@@ -166,14 +159,14 @@ if frontend_dir is not None:
             )
         )
 
-
     @app.post("/screen")
     def screen(request: ScreenRequest) -> list[dict[str, Any]]:
         engine = ScreeningEngine(StrategyConfig.from_dict(request.config))
-        models = [item.to_model() for item in request.snapshots]
+        snapshots = [item.to_model() for item in request.snapshots]
         if request.market_scope != MARKET_SCOPE_ALL:
-            models = [item for item in models if matches_market_scope(item.symbol, request.market_scope)]
-        results = engine.rank(models, only_passed=False)
+            snapshots = [item for item in snapshots if matches_market_scope(item.symbol, request.market_scope)]
+
+        ranked_results = engine.rank(snapshots, only_passed=False)
         return [
             {
                 "symbol": result.symbol,
@@ -192,24 +185,22 @@ if frontend_dir is not None:
                 "overhead_pressure": round(result.snapshot.overhead_pressure, 4),
                 "chip_compact": round(result.snapshot.chip_compact, 4),
             }
-            for result in results
+            for result in ranked_results
         ]
-
 
     @app.post("/backtest")
     def backtest(request: BacktestRequest) -> dict[str, Any]:
         engine = BacktestEngine(StrategyConfig.from_dict(request.config))
         snapshots_by_date = {
-            trade_date: [item.to_model() for item in snapshots]
-            for trade_date, snapshots in request.snapshots_by_date.items()
+            trade_day: [item.to_model() for item in snapshots]
+            for trade_day, snapshots in request.snapshots_by_date.items()
         }
         if request.market_scope != MARKET_SCOPE_ALL:
             snapshots_by_date = {
-                trade_date: [
-                    item for item in snapshots if matches_market_scope(item.symbol, request.market_scope)
-                ]
-                for trade_date, snapshots in snapshots_by_date.items()
+                trade_day: [item for item in snapshots if matches_market_scope(item.symbol, request.market_scope)]
+                for trade_day, snapshots in snapshots_by_date.items()
             }
+
         report = engine.run(
             snapshots_by_date=snapshots_by_date,
             bars_by_symbol={
@@ -240,7 +231,6 @@ if frontend_dir is not None:
         }
 else:
     app = None
-
 
     def __getattr__(name: str) -> Any:
         if name == "app":

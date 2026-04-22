@@ -44,8 +44,7 @@ class ScreeningSmokeTest(unittest.TestCase):
         )
 
     def test_snapshot_passes_filters(self) -> None:
-        engine = ScreeningEngine()
-        result = engine.evaluate(self._snapshot())
+        result = ScreeningEngine().evaluate(self._snapshot())
         self.assertTrue(result.passed_filters)
         self.assertGreater(result.score.total, 70.0)
 
@@ -67,6 +66,7 @@ class ScreeningSmokeTest(unittest.TestCase):
                     volume=800_000 + offset * 10_000,
                 )
             )
+
         report = BacktestEngine().run(
             snapshots_by_date={screening_snapshot.trade_date: [screening_snapshot]},
             bars_by_symbol={"000001.SZ": bars},
@@ -87,11 +87,11 @@ class ScreeningSmokeTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            provider = CSVProvider(csv_path)
-            rows = provider.fetch_daily_snapshots(snapshot.trade_date)
+            rows = CSVProvider(csv_path).fetch_daily_snapshots(snapshot.trade_date)
         finally:
             if csv_path.exists():
                 csv_path.unlink()
+
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].symbol, snapshot.symbol)
         self.assertTrue(rows[0].limit_up)
@@ -114,6 +114,7 @@ class ScreeningSmokeTest(unittest.TestCase):
                 )
             )
             price += 0.02
+
         snapshot = build_snapshot_from_bars(
             "000001.SZ",
             bars,
@@ -242,7 +243,11 @@ class ScreeningSmokeTest(unittest.TestCase):
 
     def test_reason_translation_outputs_chinese(self) -> None:
         translated = mvp_service._translate_reasons(
-            ["Low overhead chip pressure", "moving averages are not in bullish alignment", "volume_ratio=0.89 below 1.50"]
+            [
+                "Low overhead chip pressure",
+                "moving averages are not in bullish alignment",
+                "volume_ratio=0.89 below 1.50",
+            ]
         )
         self.assertEqual(translated[0], "上方筹码压力较小")
         self.assertEqual(translated[1], "均线尚未形成多头排列")
@@ -304,7 +309,7 @@ class ScreeningSmokeTest(unittest.TestCase):
             )
             detailed = build_mvp_payload(
                 StrategyInput(
-                    narrative="主板趋势启动，筑底3个月，上方压力5%，量比1.9，止损6%，止盈25%，最好涨停回封",
+                    narrative="主板趋势启动，筑底3个月，上方压力5%，量比1.9，止损6%，止盈25%，最好涨停回封。",
                     market_scope="main_board",
                     style_focus="trend_start",
                     holding_period="swing",

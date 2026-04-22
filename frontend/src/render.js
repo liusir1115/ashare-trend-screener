@@ -1,21 +1,8 @@
-import { getScopeLabel } from "./strategy-engine.js";
+import { getScopeLabel, pageCopy } from "./content.js";
+import { formatPercent, getCandidateStatus } from "./render-utils.js";
 
-function statusMeta(item) {
-  if (item.passedFilters) {
-    return { label: "通过", className: "pill-pass" };
-  }
-  if ((item.score?.total || 0) >= 55) {
-    return { label: "观察", className: "pill-watch" };
-  }
-  return { label: "淘汰", className: "pill-blocked" };
-}
-
-function percent(value) {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-export function renderAdvice(container, advice) {
-  container.innerHTML = advice
+export function renderAdvice(container, adviceItems) {
+  container.innerHTML = adviceItems
     .map(
       (item) => `
         <article class="advice-card">
@@ -28,53 +15,67 @@ export function renderAdvice(container, advice) {
     .join("");
 }
 
-export function renderPlaybooks(container, playbooks, selectedId, recommendedId) {
+export function renderPlaybooks(container, playbooks, selectedPlaybookId, recommendedPlaybookId) {
   container.innerHTML = (playbooks || [])
-    .map(
-      (item) => `
-        <article class="playbook-card ${item.id === selectedId ? "active" : ""}">
-          <div class="playbook-title-row">
-            <h3>${item.title}</h3>
-            ${
-              item.id === selectedId
-                ? '<span class="playbook-badge">当前方案</span>'
-                : item.id === recommendedId
-                ? '<span class="playbook-badge">推荐</span>'
-                : ""
-            }
-          </div>
-          <p class="playbook-body">${item.thesis}</p>
-          <p class="playbook-fit">${item.fit_for}</p>
-          <div class="playbook-highlights">
-            ${(item.highlights || []).map((tag) => `<span class="playbook-chip">${tag}</span>`).join("")}
-          </div>
-          <button class="playbook-button" data-playbook-id="${item.id}">
-            ${item.id === selectedId ? "已采用" : "采用这套"}
-          </button>
-        </article>
-      `,
-    )
+    .map((playbook) => buildPlaybookCard(playbook, selectedPlaybookId, recommendedPlaybookId))
     .join("");
 }
 
-export function renderParsedRules(container, rules) {
-  const groups = new Map();
-  (rules || []).forEach((rule) => {
-    const group = typeof rule === "string" ? "系统判断" : rule.group || "系统判断";
+function buildPlaybookCard(playbook, selectedPlaybookId, recommendedPlaybookId) {
+  const isSelected = playbook.id === selectedPlaybookId;
+  const isRecommended = playbook.id === recommendedPlaybookId;
+
+  return `
+    <article class="playbook-card ${isSelected ? "active" : ""}">
+      <div class="playbook-title-row">
+        <h3>${playbook.title}</h3>
+        ${buildPlaybookBadge(isSelected, isRecommended)}
+      </div>
+      <p class="playbook-body">${playbook.thesis}</p>
+      <p class="playbook-fit">${playbook.fit_for}</p>
+      <div class="playbook-highlights">
+        ${(playbook.highlights || []).map((item) => `<span class="playbook-chip">${item}</span>`).join("")}
+      </div>
+      <button class="playbook-button" data-playbook-id="${playbook.id}">
+        ${isSelected ? "已采用" : "采用这套"}
+      </button>
+    </article>
+  `;
+}
+
+function buildPlaybookBadge(isSelected, isRecommended) {
+  if (isSelected) {
+    return '<span class="playbook-badge">当前方案</span>';
+  }
+
+  if (isRecommended) {
+    return '<span class="playbook-badge">推荐</span>';
+  }
+
+  return "";
+}
+
+export function renderParsedRules(container, parsedRules) {
+  const rulesByGroup = new Map();
+
+  (parsedRules || []).forEach((rule) => {
+    const groupName = typeof rule === "string" ? "系统判断" : rule.group || "系统判断";
     const label = typeof rule === "string" ? rule : rule.label;
-    if (!groups.has(group)) {
-      groups.set(group, []);
+
+    if (!rulesByGroup.has(groupName)) {
+      rulesByGroup.set(groupName, []);
     }
-    groups.get(group).push(label);
+
+    rulesByGroup.get(groupName).push(label);
   });
 
-  container.innerHTML = [...groups.entries()]
+  container.innerHTML = [...rulesByGroup.entries()]
     .map(
-      ([group, items]) => `
+      ([groupName, labels]) => `
         <div class="parsed-group">
-          <div class="parsed-group-title">${group}</div>
+          <div class="parsed-group-title">${groupName}</div>
           <div class="parsed-group-list">
-            ${items.map((item) => `<span class="parsed-pill">${item}</span>`).join("")}
+            ${labels.map((label) => `<span class="parsed-pill">${label}</span>`).join("")}
           </div>
         </div>
       `,
@@ -82,8 +83,8 @@ export function renderParsedRules(container, rules) {
     .join("");
 }
 
-export function renderParameters(container, items) {
-  container.innerHTML = items
+export function renderParameters(container, parameterItems) {
+  container.innerHTML = parameterItems
     .map(
       (item) => `
         <div class="parameter-item">
@@ -98,18 +99,18 @@ export function renderParameters(container, items) {
     .join("");
 }
 
-export function renderSummaryText(container, text) {
-  container.textContent = text;
+export function renderSummaryText(container, summaryText) {
+  container.textContent = summaryText;
 }
 
-export function renderTopMeta(generatedAtEl, scopeStatusEl, generatedAt, text = "已生成") {
-  generatedAtEl.textContent = generatedAt || "--";
-  scopeStatusEl.textContent = text;
+export function renderTopMeta(generatedAtElement, scopeStatusElement, generatedAt, statusText = pageCopy.loading) {
+  generatedAtElement.textContent = generatedAt || "--";
+  scopeStatusElement.textContent = statusText;
 }
 
-export function renderScope(scopeLabelEl, scopeNoteEl, scope, note) {
-  scopeLabelEl.textContent = getScopeLabel(scope);
-  scopeNoteEl.textContent = note;
+export function renderScope(scopeLabelElement, scopeNoteElement, scope, noteText) {
+  scopeLabelElement.textContent = getScopeLabel(scope);
+  scopeNoteElement.textContent = noteText;
 }
 
 export function renderBacktest(container, backtest) {
@@ -127,44 +128,41 @@ export function renderBacktest(container, backtest) {
       <span class="metric-value">${backtest.takeProfit}</span>
     </div>
     <div class="metric-chip">
-      <span class="metric-label">最大持仓</span>
+      <span class="metric-label">最多持仓</span>
       <span class="metric-value">${backtest.maxPositions}</span>
     </div>
   `;
 }
 
-export function renderSummaryGrid(container, items) {
-  const passed = items.filter((item) => item.passedFilters).length;
-  const watch = items.filter((item) => !item.passedFilters && item.score.total >= 55).length;
-  const avgScore = items.length
-    ? (items.reduce((sum, item) => sum + item.score.total, 0) / items.length).toFixed(1)
-    : "0.0";
-  const top = items[0];
+export function renderSummaryGrid(container, resultItems) {
+  const passedCount = resultItems.filter((item) => item.passedFilters).length;
+  const watchCount = resultItems.filter((item) => !item.passedFilters && item.score.total >= 55).length;
+  const topItem = resultItems[0];
 
-  const cards = [
+  const summaryCards = [
     {
       title: "样本数",
-      value: String(items.length),
-      detail: "本次结果里参与展示的股票数量",
+      value: String(resultItems.length),
+      detail: "这次展示出来的股票数量。",
     },
     {
       title: "通过数",
-      value: String(passed),
-      detail: "完全满足当前硬过滤条件",
+      value: String(passedCount),
+      detail: "完全过线的股票数量。",
     },
     {
       title: "观察数",
-      value: String(watch),
-      detail: "接近通过，适合继续跟踪",
+      value: String(watchCount),
+      detail: "还差一点，可以继续跟踪的股票。",
     },
     {
       title: "最高分",
-      value: top ? `${top.score.total}` : "--",
-      detail: top ? `${top.symbol}` : "暂无结果",
+      value: topItem ? `${topItem.score.total}` : "--",
+      detail: topItem ? topItem.symbol : "暂时没有结果",
     },
   ];
 
-  container.innerHTML = cards
+  container.innerHTML = summaryCards
     .map(
       (card) => `
         <article class="summary-card">
@@ -177,76 +175,86 @@ export function renderSummaryGrid(container, items) {
     .join("");
 }
 
-export function renderCandidates(container, items) {
-  const passed = items.filter((item) => item.passedFilters).slice(0, 3);
-  const watch = items.filter((item) => !item.passedFilters && item.score.total >= 55).slice(0, 3);
-  const blocked = items.filter((item) => !item.passedFilters && item.score.total < 55).slice(0, 3);
-
+export function renderCandidates(container, resultItems) {
   const sections = [
-    { title: "通过", className: "bucket-pass", items: passed, empty: "当前没有完全通过的股票" },
-    { title: "观察", className: "bucket-watch", items: watch, empty: "当前没有接近通过的股票" },
-    { title: "淘汰", className: "bucket-blocked", items: blocked, empty: "当前没有明显淘汰样本" },
+    {
+      title: "通过",
+      className: "bucket-pass",
+      items: resultItems.filter((item) => item.passedFilters).slice(0, 3),
+      emptyText: "当前没有完全通过的股票。",
+    },
+    {
+      title: "观察",
+      className: "bucket-watch",
+      items: resultItems.filter((item) => !item.passedFilters && item.score.total >= 55).slice(0, 3),
+      emptyText: "当前没有接近通过的股票。",
+    },
+    {
+      title: "淘汰",
+      className: "bucket-blocked",
+      items: resultItems.filter((item) => !item.passedFilters && item.score.total < 55).slice(0, 3),
+      emptyText: "当前没有明显需要淘汰的样本。",
+    },
   ];
 
-  container.innerHTML = sections
-    .map((section) => {
-      const cards = section.items.length
-        ? section.items
-            .map((item) => {
-              const status = statusMeta(item);
-              const reasons = item.passedFilters ? item.score.reasons : item.failedReasons;
-              return `
-                <article class="candidate-card">
-                  <div class="candidate-main">
-                    <div class="candidate-head">
-                      <h3>${item.symbol}</h3>
-                      <span class="pill ${status.className}">${status.label}</span>
-                    </div>
-                    <div class="candidate-sub">${getScopeLabel(item.marketSegment)} / ${item.tradeDate}</div>
-                    <ul class="reasons">
-                      ${reasons.slice(0, 3).map((reason) => `<li>${reason}</li>`).join("")}
-                    </ul>
-                  </div>
-                  <div class="candidate-side">
-                    <div class="candidate-score">${item.score.total}</div>
-                    <div class="candidate-metrics">
-                      <span>量比 ${item.metrics.volumeRatio}</span>
-                      <span>上方压力 ${percent(item.metrics.overheadPressure)}</span>
-                      <span>筑底 ${item.metrics.baseDays} 天</span>
-                    </div>
-                  </div>
-                </article>
-              `;
-            })
-            .join("")
-        : `<div class="candidate-empty">${section.empty}</div>`;
-
-      return `
-        <section class="candidate-section ${section.className}">
-          <div class="candidate-section-head">
-            <h3>${section.title}</h3>
-            <span class="candidate-count">${section.items.length}</span>
-          </div>
-          <div class="candidate-section-list">
-            ${cards}
-          </div>
-        </section>
-      `;
-    })
-    .join("");
+  container.innerHTML = sections.map(buildCandidateSection).join("");
 }
 
-export function renderResultsTable(container, items) {
-  container.innerHTML = items
+function buildCandidateSection(section) {
+  const cardsHtml = section.items.length
+    ? section.items.map(buildCandidateCard).join("")
+    : `<div class="candidate-empty">${section.emptyText}</div>`;
+
+  return `
+    <section class="candidate-section ${section.className}">
+      <div class="candidate-section-head">
+        <h3>${section.title}</h3>
+        <span class="candidate-count">${section.items.length}</span>
+      </div>
+      <div class="candidate-section-list">${cardsHtml}</div>
+    </section>
+  `;
+}
+
+function buildCandidateCard(item) {
+  const status = getCandidateStatus(item);
+  const reasons = item.passedFilters ? item.score.reasons : item.failedReasons;
+
+  return `
+    <article class="candidate-card">
+      <div class="candidate-main">
+        <div class="candidate-head">
+          <h3>${item.symbol}</h3>
+          <span class="pill ${status.className}">${status.label}</span>
+        </div>
+        <div class="candidate-sub">${getScopeLabel(item.marketSegment)} / ${item.tradeDate}</div>
+        <ul class="reasons">
+          ${reasons.slice(0, 3).map((reason) => `<li>${reason}</li>`).join("")}
+        </ul>
+      </div>
+      <div class="candidate-side">
+        <div class="candidate-score">${item.score.total}</div>
+        <div class="candidate-metrics">
+          <span>量比 ${item.metrics.volumeRatio}</span>
+          <span>上方压力 ${formatPercent(item.metrics.overheadPressure)}</span>
+          <span>筑底 ${item.metrics.baseDays} 天</span>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+export function renderResultsTable(container, resultItems) {
+  container.innerHTML = resultItems
     .map((item) => {
-      const status = statusMeta(item);
+      const status = getCandidateStatus(item);
       return `
         <tr>
           <td>${item.symbol}</td>
           <td>${getScopeLabel(item.marketSegment)}</td>
           <td>${item.score.total}</td>
           <td>${item.metrics.volumeRatio}</td>
-          <td>${percent(item.metrics.overheadPressure)}</td>
+          <td>${formatPercent(item.metrics.overheadPressure)}</td>
           <td>${item.metrics.baseDays}</td>
           <td><span class="pill ${status.className}">${status.label}</span></td>
         </tr>
