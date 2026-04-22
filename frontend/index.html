@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>策略工坊 Web</title>
+    <link rel="stylesheet" href="./styles/app.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-left"></div>
+    <div class="ambient ambient-right"></div>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">A</span>
+          <div>
+            <p class="eyebrow">Strategy Workshop</p>
+            <h1>策略工坊 Web</h1>
+          </div>
+        </div>
+        <div class="topbar-meta">
+          <span class="meta-chip">网页版原型</span>
+          <span class="meta-chip">主板 / 科创板分开测试</span>
+          <span class="meta-chip" id="generatedAt">--</span>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Workflow</p>
+          <h2>先描述你的策略，再把它压成可回测参数。</h2>
+          <p class="hero-text">
+            这版不再是单纯展示结果，而是把策略输入、参数优化、分市场结果放进同一条工作流里。你先告诉系统你想抓什么机会，页面再决定先跑主板、科创板还是全市场。
+          </p>
+        </div>
+        <div class="hero-side">
+          <article class="hero-card">
+            <span>策略入口</span>
+            <strong>用户问询优先</strong>
+          </article>
+          <article class="hero-card">
+            <span>优化方式</span>
+            <strong>经验规则 + 参数建议</strong>
+          </article>
+          <article class="hero-card">
+            <span>结果输出</span>
+            <strong>按市场范围切分</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="left-rail">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Step 1</p>
+                <h3>策略问询</h3>
+              </div>
+              <span class="panel-tag">输入你的方法</span>
+            </div>
+
+            <form id="strategyForm" class="stack-form">
+              <label class="field">
+                <span>策略描述</span>
+                <textarea id="strategyNarrative" rows="6" placeholder="先讲你的策略，再让系统帮你量化。">我想先从主板里找几个月筑底后刚开始走强、上方压力轻、估值还没完全修复的票。</textarea>
+              </label>
+
+              <div class="split-grid">
+                <label class="field">
+                  <span>测试市场</span>
+                  <select id="marketScope">
+                    <option value="main_board">主板</option>
+                    <option value="star_market">科创板</option>
+                    <option value="all">全市场</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>交易风格</span>
+                  <select id="styleFocus">
+                    <option value="breakout">平台突破</option>
+                    <option value="trend_start">趋势启动</option>
+                    <option value="rebound">底部反转</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>持股周期</span>
+                  <select id="holdingPeriod">
+                    <option value="swing">波段 10-20 天</option>
+                    <option value="short">短线 3-7 天</option>
+                    <option value="trend">趋势 20 天以上</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>风险偏好</span>
+                  <select id="riskTolerance">
+                    <option value="balanced">平衡</option>
+                    <option value="conservative">偏稳</option>
+                    <option value="aggressive">偏激进</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>估值权重</span>
+                  <select id="valuationWeight">
+                    <option value="medium">中等</option>
+                    <option value="high">很高</option>
+                    <option value="low">较低</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>核心主信号</span>
+                  <select id="prioritySignal">
+                    <option value="chip">筹码结构</option>
+                    <option value="volume">放量突破</option>
+                    <option value="base">筑底时长</option>
+                    <option value="valuation">估值修复</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="button button-primary">生成策略方案</button>
+                <p class="helper-text">建议先把策略说人话，再由系统帮你转成阈值。</p>
+              </div>
+            </form>
+          </article>
+        </aside>
+
+        <section class="main-rail">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Step 2</p>
+                <h3>策略优化</h3>
+              </div>
+              <span class="panel-tag">把想法改成参数</span>
+            </div>
+
+            <div class="advice-grid" id="adviceGrid"></div>
+            <div class="parameter-grid" id="parameterGrid"></div>
+            <div class="strategy-note" id="strategySummary"></div>
+
+            <div class="form-actions">
+              <button id="runPreviewButton" class="button button-secondary">查看结果预览</button>
+              <p class="helper-text">这一步才进入结果区，避免一开始就被固定策略绑住。</p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Step 3</p>
+                <h3>结果预览</h3>
+              </div>
+              <div class="scope-meta">
+                <span class="meta-chip" id="scopeLabel">主板</span>
+                <span class="meta-chip" id="scopeStatus">策略已优化</span>
+              </div>
+            </div>
+
+            <div class="summary-grid" id="summaryGrid"></div>
+
+            <div class="results-layout">
+              <div class="candidate-column" id="candidateList"></div>
+              <aside class="insight-column">
+                <article class="mini-card">
+                  <p class="eyebrow">Scope</p>
+                  <h4>当前测试范围</h4>
+                  <p id="scopeNote" class="helper-text"></p>
+                </article>
+
+                <article class="mini-card">
+                  <p class="eyebrow">Backtest</p>
+                  <h4>回测口径</h4>
+                  <div class="mini-metrics" id="backtestMetrics"></div>
+                </article>
+              </aside>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>股票</th>
+                    <th>板块</th>
+                    <th>总分</th>
+                    <th>量比</th>
+                    <th>上方压力</th>
+                    <th>筑底天数</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody id="resultsTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.DS_Store
+
+outputs/
+tests/.tmp_snapshots.csv
+
+.venv/
+venv/

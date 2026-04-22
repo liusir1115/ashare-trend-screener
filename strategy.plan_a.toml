@@ -1,0 +1,46 @@
+[meta]
+name = "plan_a_daily_private_pilot"
+description = "10-person private pilot focused on end-of-day screening and daily backtests."
+
+[chip]
+max_overhead_pressure = 0.08
+excellent_overhead_pressure = 0.04
+max_chip_compact = 0.22
+excellent_chip_compact = 0.12
+min_winner_rate = 0.40
+
+[technical]
+min_volume_ratio = 1.5
+strong_volume_ratio = 2.2
+min_ma20_slope = 0.0008
+min_ma60_slope = 0.0003
+breakout_lookback_days = 120
+breakout_margin = 0.03
+require_limit_up_bonus = false
+
+[base]
+min_base_days = 50
+ideal_base_days = 100
+max_range_90 = 0.40
+max_close_to_high_250 = 0.85
+min_upside_to_high_250 = 0.15
+
+[valuation]
+max_industry_pe_ratio = 1.00
+max_industry_pb_ratio = 1.00
+min_industry_hot_score = 0.45
+min_board_hot_score = 0.45
+
+[weights]
+chip = 0.30
+technical = 0.30
+base = 0.25
+valuation = 0.15
+
+[backtest]
+hold_days = 15
+max_positions = 10
+position_size = 0.10
+stop_loss = -0.07
+take_profit = 0.18
+

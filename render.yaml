@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ashare-trend-screener
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+

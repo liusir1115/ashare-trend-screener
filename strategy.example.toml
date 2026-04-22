@@ -1,0 +1,42 @@
+[chip]
+max_overhead_pressure = 0.06
+excellent_overhead_pressure = 0.03
+max_chip_compact = 0.18
+excellent_chip_compact = 0.10
+min_winner_rate = 0.45
+
+[technical]
+min_volume_ratio = 1.8
+strong_volume_ratio = 2.5
+min_ma20_slope = 0.001
+min_ma60_slope = 0.0005
+breakout_lookback_days = 120
+breakout_margin = 0.02
+require_limit_up_bonus = false
+
+[base]
+min_base_days = 60
+ideal_base_days = 120
+max_range_90 = 0.35
+max_close_to_high_250 = 0.80
+min_upside_to_high_250 = 0.20
+
+[valuation]
+max_industry_pe_ratio = 0.90
+max_industry_pb_ratio = 0.90
+min_industry_hot_score = 0.55
+min_board_hot_score = 0.50
+
+[weights]
+chip = 0.35
+technical = 0.30
+base = 0.20
+valuation = 0.15
+
+[backtest]
+hold_days = 20
+max_positions = 5
+position_size = 0.20
+stop_loss = -0.08
+take_profit = 0.20
+
