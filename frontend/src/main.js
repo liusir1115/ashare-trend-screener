@@ -2,6 +2,7 @@ import {
   renderAdvice,
   renderBacktest,
   renderCandidates,
+  renderParsedRules,
   renderParameters,
   renderResultsTable,
   renderScope,
@@ -13,7 +14,6 @@ import { buildStrategyState } from "./strategy-engine.js";
 import { fallbackPayload } from "./fallback-data.js";
 
 const strategyForm = document.getElementById("strategyForm");
-const runPreviewButton = document.getElementById("runPreviewButton");
 
 const elements = {
   narrative: document.getElementById("strategyNarrative"),
@@ -28,6 +28,7 @@ const elements = {
   scopeStatus: document.getElementById("scopeStatus"),
   scopeNote: document.getElementById("scopeNote"),
   adviceGrid: document.getElementById("adviceGrid"),
+  parsedRules: document.getElementById("parsedRules"),
   parameterGrid: document.getElementById("parameterGrid"),
   strategySummary: document.getElementById("strategySummary"),
   summaryGrid: document.getElementById("summaryGrid"),
@@ -59,16 +60,22 @@ async function fetchJson(url, options = {}) {
   return response.json();
 }
 
-function applyPayload(payload) {
+function applyPayload(payload, scope = readFormValues().scope) {
   const strategy = payload.strategy;
   const results = payload.results;
   const items = [...results.items].sort((a, b) => b.score.total - a.score.total);
 
-  renderTopMeta(elements.generatedAt, elements.scopeStatus, payload.generated_at, results.live_data ? "实时样本已接入" : "样本回退模式");
+  renderTopMeta(
+    elements.generatedAt,
+    elements.scopeStatus,
+    payload.generated_at,
+    results.live_data ? "实时数据" : "演示数据",
+  );
   renderAdvice(elements.adviceGrid, strategy.advice);
+  renderParsedRules(elements.parsedRules, strategy.parsed_rules);
   renderParameters(elements.parameterGrid, strategy.parameters);
   renderSummaryText(elements.strategySummary, strategy.summary);
-  renderScope(elements.scopeLabel, elements.scopeNote, results.label === "全市场" ? "all" : readFormValues().scope, results.note);
+  renderScope(elements.scopeLabel, elements.scopeNote, scope, results.note);
   renderBacktest(elements.backtestMetrics, {
     holdDays: payload.backtest.hold_days,
     stopLoss: payload.backtest.stop_loss,
@@ -83,9 +90,9 @@ function applyPayload(payload) {
 async function loadBootstrap() {
   try {
     const payload = await fetchJson("/api/mvp/bootstrap");
-    applyPayload(payload);
+    applyPayload(payload, "main_board");
   } catch {
-    applyPayload(fallbackPayload);
+    applyPayload(fallbackPayload, "main_board");
   }
 }
 
@@ -94,9 +101,10 @@ async function renderAll() {
   const localPlan = buildStrategyState(formValues);
 
   renderAdvice(elements.adviceGrid, localPlan.advice);
+  renderParsedRules(elements.parsedRules, localPlan.parsed_rules);
   renderParameters(elements.parameterGrid, localPlan.parameters);
   renderSummaryText(elements.strategySummary, localPlan.summary);
-  renderTopMeta(elements.generatedAt, elements.scopeStatus, "--", "正在生成策略方案");
+  renderTopMeta(elements.generatedAt, elements.scopeStatus, "--", "生成中");
 
   try {
     const payload = await fetchJson("/api/mvp/strategy", {
@@ -111,30 +119,26 @@ async function renderAll() {
         priority_signal: formValues.priority,
       }),
     });
-    applyPayload(payload);
+    applyPayload(payload, formValues.scope);
   } catch {
-    const offlinePayload = {
-      ...fallbackPayload,
-      strategy: localPlan,
-      results: {
-        ...fallbackPayload.results,
-        label: formValues.scope === "star_market" ? "科创板" : formValues.scope === "all" ? "全市场" : "主板",
+    applyPayload(
+      {
+        ...fallbackPayload,
+        strategy: localPlan,
+        results: {
+          ...fallbackPayload.results,
+          label: formValues.scope,
+        },
       },
-    };
-    applyPayload(offlinePayload);
+      formValues.scope,
+    );
   }
 }
 
 strategyForm.addEventListener("submit", (event) => {
   event.preventDefault();
   renderAll().then(() => {
-    document.querySelector(".main-rail").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-});
-
-runPreviewButton.addEventListener("click", () => {
-  renderAll().then(() => {
-    document.querySelector(".main-rail").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.querySelector(".results-card").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 });
 

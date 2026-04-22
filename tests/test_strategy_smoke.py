@@ -4,8 +4,9 @@ from datetime import date, timedelta
 from pathlib import Path
 import unittest
 
-from ashare_strategy.backtest import BacktestEngine
+import ashare_strategy.mvp_service as mvp_service
 from ashare_strategy.analytics import build_snapshot_from_bars
+from ashare_strategy.backtest import BacktestEngine
 from ashare_strategy.market import classify_market_segment, matches_market_scope
 from ashare_strategy.models import DailyBar, DailySnapshot
 from ashare_strategy.mvp_service import StrategyInput, build_mvp_payload, build_strategy_plan
@@ -143,8 +144,12 @@ class ScreeningSmokeTest(unittest.TestCase):
                 priority_signal="chip",
             )
         )
-        self.assertEqual(len(plan["advice"]), 3)
+        self.assertEqual(len(plan["advice"]), 4)
         self.assertEqual(len(plan["parameters"]), 4)
+        self.assertIn("parsed_rules", plan)
+        self.assertIsInstance(plan["parsed_rules"], list)
+        self.assertIn("group", plan["parsed_rules"][0])
+        self.assertIn("label", plan["parsed_rules"][0])
         self.assertIn("主板", plan["summary"])
 
     def test_mvp_payload_shape(self) -> None:
@@ -159,6 +164,122 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("results", payload)
         self.assertIn("backtest", payload)
         self.assertIsInstance(payload["results"]["items"], list)
+
+    def test_strategy_changes_affect_fallback_results(self) -> None:
+        original_force_fallback = mvp_service.FORCE_FALLBACK
+        try:
+            mvp_service.FORCE_FALLBACK = True
+            mvp_service._RESULT_CACHE.clear()
+            conservative = build_mvp_payload(
+                StrategyInput(
+                    narrative="主板 筹码 估值 左侧",
+                    market_scope="main_board",
+                    style_focus="breakout",
+                    holding_period="swing",
+                    risk_tolerance="conservative",
+                    valuation_weight="high",
+                    priority_signal="chip",
+                )
+            )
+            aggressive = build_mvp_payload(
+                StrategyInput(
+                    narrative="主板 放量 趋势启动",
+                    market_scope="main_board",
+                    style_focus="trend_start",
+                    holding_period="trend",
+                    risk_tolerance="aggressive",
+                    valuation_weight="low",
+                    priority_signal="volume",
+                )
+            )
+        finally:
+            mvp_service.FORCE_FALLBACK = original_force_fallback
+            mvp_service._RESULT_CACHE.clear()
+
+        conservative_items = conservative["results"]["items"]
+        aggressive_items = aggressive["results"]["items"]
+        self.assertNotEqual(conservative["backtest"]["hold_days"], aggressive["backtest"]["hold_days"])
+        self.assertNotEqual(conservative_items[0]["score"]["total"], aggressive_items[0]["score"]["total"])
+
+    def test_mvp_cache_key_uses_full_strategy(self) -> None:
+        key_a = mvp_service._cache_key(
+            StrategyInput(
+                narrative="主板策略A",
+                market_scope="main_board",
+                style_focus="breakout",
+                holding_period="swing",
+                risk_tolerance="balanced",
+                valuation_weight="medium",
+                priority_signal="chip",
+            )
+        )
+        key_b = mvp_service._cache_key(
+            StrategyInput(
+                narrative="主板策略B",
+                market_scope="main_board",
+                style_focus="trend_start",
+                holding_period="trend",
+                risk_tolerance="aggressive",
+                valuation_weight="low",
+                priority_signal="volume",
+            )
+        )
+        self.assertNotEqual(key_a, key_b)
+
+    def test_narrative_directives_extract_numeric_rules(self) -> None:
+        directives = mvp_service._extract_narrative_directives(
+            "我想做左侧，筑底3个月，上方压力5%，量比1.9，止损8%，止盈20%，最好有涨停回封。"
+        )
+        self.assertEqual(directives.min_base_days, 60)
+        self.assertAlmostEqual(directives.max_overhead_pressure, 0.05)
+        self.assertAlmostEqual(directives.min_volume_ratio, 1.9)
+        self.assertAlmostEqual(directives.stop_loss, -0.08)
+        self.assertAlmostEqual(directives.take_profit, 0.20)
+        self.assertTrue(directives.require_limit_up)
+        self.assertTrue(directives.prefer_left_side)
+
+    def test_reason_translation_outputs_chinese(self) -> None:
+        translated = mvp_service._translate_reasons(
+            ["Low overhead chip pressure", "moving averages are not in bullish alignment", "volume_ratio=0.89 below 1.50"]
+        )
+        self.assertEqual(translated[0], "上方筹码压力较小")
+        self.assertEqual(translated[1], "均线尚未形成多头排列")
+        self.assertIn("量比", translated[2])
+
+    def test_narrative_alone_can_change_results(self) -> None:
+        original_force_fallback = mvp_service.FORCE_FALLBACK
+        try:
+            mvp_service.FORCE_FALLBACK = True
+            mvp_service._RESULT_CACHE.clear()
+            plain = build_mvp_payload(
+                StrategyInput(
+                    narrative="主板趋势启动",
+                    market_scope="main_board",
+                    style_focus="trend_start",
+                    holding_period="swing",
+                    risk_tolerance="balanced",
+                    valuation_weight="medium",
+                    priority_signal="chip",
+                )
+            )
+            detailed = build_mvp_payload(
+                StrategyInput(
+                    narrative="主板趋势启动，筑底3个月，上方压力5%，量比1.9，止损6%，止盈25%，最好涨停回封",
+                    market_scope="main_board",
+                    style_focus="trend_start",
+                    holding_period="swing",
+                    risk_tolerance="balanced",
+                    valuation_weight="medium",
+                    priority_signal="chip",
+                )
+            )
+        finally:
+            mvp_service.FORCE_FALLBACK = original_force_fallback
+            mvp_service._RESULT_CACHE.clear()
+
+        self.assertNotEqual(plain["backtest"]["stop_loss"], detailed["backtest"]["stop_loss"])
+        self.assertNotEqual(plain["backtest"]["take_profit"], detailed["backtest"]["take_profit"])
+        self.assertNotEqual(plain["results"]["items"][0]["score"]["total"], detailed["results"]["items"][0]["score"]["total"])
 
 
 if __name__ == "__main__":
