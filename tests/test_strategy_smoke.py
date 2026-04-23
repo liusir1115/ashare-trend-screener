@@ -5,11 +5,13 @@ from pathlib import Path
 import unittest
 
 import ashare_strategy.mvp_service as mvp_service
+import ashare_strategy.providers.akshare_provider as akshare_provider
 from ashare_strategy.analytics import build_snapshot_from_bars
 from ashare_strategy.backtest import BacktestEngine
 from ashare_strategy.market import classify_market_segment, matches_market_scope
 from ashare_strategy.models import DailyBar, DailySnapshot
 from ashare_strategy.mvp_service import StrategyInput, build_mvp_payload, build_strategy_plan
+from ashare_strategy.providers.akshare_provider import AKShareProvider, _chip_profile_from_row
 from ashare_strategy.providers.csv_provider import CSVProvider
 from ashare_strategy.strategy import ScreeningEngine
 
@@ -325,6 +327,73 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertNotEqual(plain["backtest"]["stop_loss"], detailed["backtest"]["stop_loss"])
         self.assertNotEqual(plain["backtest"]["take_profit"], detailed["backtest"]["take_profit"])
         self.assertNotEqual(plain["results"]["items"][0]["score"]["total"], detailed["results"]["items"][0]["score"]["total"])
+
+    def test_akshare_chip_row_maps_to_strategy_costs(self) -> None:
+        profile = _chip_profile_from_row(
+            {
+                "90成本-低": 10.0,
+                "平均成本": 12.0,
+                "90成本-高": 15.0,
+                "获利比例": 65.0,
+            }
+        )
+        self.assertEqual(profile, (10.0, 12.0, 15.0, 0.65))
+
+    def test_akshare_provider_reads_chip_profile_without_network(self) -> None:
+        class FakeFrame:
+            empty = False
+
+            def to_dict(self, orient: str) -> list[dict[str, object]]:
+                return [
+                    {"日期": "2026-04-20", "90成本-低": 8.0, "平均成本": 9.0, "90成本-高": 10.0, "获利比例": 45.0},
+                    {"日期": "2026-04-22", "90成本-低": 9.0, "平均成本": 10.0, "90成本-高": 11.0, "获利比例": 0.60},
+                ]
+
+        class FakeAK:
+            def stock_cyq_em(self, symbol: str, adjust: str) -> FakeFrame:
+                self.symbol = symbol
+                self.adjust = adjust
+                return FakeFrame()
+
+        original_loader = akshare_provider._require_akshare
+        fake_ak = FakeAK()
+        try:
+            akshare_provider._require_akshare = lambda: fake_ak
+            provider = AKShareProvider(adjust="qfq")
+            profile = provider.fetch_chip_profile("000001.SZ", date(2026, 4, 22))
+        finally:
+            akshare_provider._require_akshare = original_loader
+
+        self.assertEqual(profile, (9.0, 10.0, 11.0, 0.60))
+        self.assertEqual(fake_ak.symbol, "000001")
+        self.assertEqual(fake_ak.adjust, "qfq")
+
+    def test_akshare_provider_reads_limit_pool_without_network(self) -> None:
+        class FakeFrame:
+            def __init__(self, rows: list[dict[str, object]]) -> None:
+                self.rows = rows
+                self.empty = False
+
+            def to_dict(self, orient: str) -> list[dict[str, object]]:
+                return self.rows
+
+        class FakeAK:
+            def stock_zt_pool_em(self, date: str) -> FakeFrame:
+                return FakeFrame([{"代码": "000001", "炸板次数": 2, "首次封板时间": "09:35:00"}])
+
+            def stock_zt_pool_zbgc_em(self, date: str) -> FakeFrame:
+                return FakeFrame([{"代码": "600000"}])
+
+        original_loader = akshare_provider._require_akshare
+        try:
+            akshare_provider._require_akshare = lambda: FakeAK()
+            provider = AKShareProvider()
+            provider._load_limit_pool_cache(date(2026, 4, 22))
+        finally:
+            akshare_provider._require_akshare = original_loader
+
+        self.assertIn("000001", provider._limit_up_cache)
+        self.assertIn("600000", provider._broken_limit_cache)
 
 
 if __name__ == "__main__":
