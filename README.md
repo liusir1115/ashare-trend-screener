@@ -61,7 +61,8 @@ overhead_pressure = max(cost_95pct - close, 0) / close
 - 用 `AKShare` 拉日线和当日快照
 - 先跑盘后筛选
 - 先跑日线回测
-- 筹码指标暂时用近 90 个交易日收盘分布做近似替代
+- 筹码优先读取东方财富筹码接口；取不到时才用历史价格做近似替代
+- 涨停/炸板优先读取东方财富涨停池和炸板池；取不到时才用涨跌幅粗略估算
 
 对应代码：
 
@@ -86,6 +87,12 @@ python -m unittest discover -s tests -p "test_*.py"
 
 ```bash
 python scripts/run_akshare_scan.py --symbols 000001,600519,300750,002594,601318 --all
+```
+
+检查免费数据源是否可用：
+
+```bash
+python scripts/check_akshare.py --symbol 000001
 ```
 
 如果你想把结果保存成 JSON：
