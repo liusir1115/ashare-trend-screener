@@ -1,6 +1,6 @@
-import { loadBootstrapPayload, loadStrategyPayload, buildFallbackPayload } from "./api.js";
+import { askStrategyQuestion, loadBootstrapPayload, loadStrategyPayload, buildFallbackPayload } from "./api.js";
 import { pageCopy } from "./content.js";
-import { pageElements, readStrategyForm, scrollToResults, strategyForm } from "./dom.js";
+import { pageElements, questionForm, readStrategyForm, scrollToResults, strategyForm } from "./dom.js";
 import {
   renderAdvice,
   renderBacktest,
@@ -13,6 +13,7 @@ import {
   renderScope,
   renderSummaryGrid,
   renderSummaryText,
+  renderQuestionAnswer,
   renderTopMeta,
 } from "./render.js";
 import { buildStrategyState } from "./strategy-engine.js";
@@ -128,5 +129,38 @@ pageElements.playbookGrid.addEventListener("click", async (event) => {
   selectedPlaybookId = clickedButton.dataset.playbookId;
   await refreshResults();
 });
+
+questionForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await submitQuestion(pageElements.questionInput.value);
+});
+
+pageElements.qaSuggestions.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-question]");
+  if (!button) {
+    return;
+  }
+
+  pageElements.questionInput.value = button.dataset.question;
+  await submitQuestion(button.dataset.question);
+});
+
+async function submitQuestion(question) {
+  if (!question.trim()) {
+    return;
+  }
+
+  pageElements.qaAnswer.textContent = "正在回答...";
+  try {
+    const payload = await askStrategyQuestion(getCurrentFormValues(), question);
+    renderQuestionAnswer(pageElements, payload);
+  } catch {
+    renderQuestionAnswer(pageElements, {
+      mode: "规则问答",
+      answer: "当前问答服务暂时不可用，但不影响策略筛选和复盘查看。",
+      suggestions: ["今天有没有高切低？", "反转策略怎么量化？"],
+    });
+  }
+}
 
 loadPage();

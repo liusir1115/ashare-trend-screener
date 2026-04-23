@@ -12,6 +12,7 @@ from ashare_strategy.backtest import BacktestEngine
 from ashare_strategy.market import classify_market_segment, matches_market_scope
 from ashare_strategy.models import DailyBar, DailySnapshot
 from ashare_strategy.mvp_service import StrategyInput, build_mvp_payload, build_strategy_plan
+from ashare_strategy.qa_service import answer_question
 from ashare_strategy.providers.akshare_provider import AKShareProvider, _chip_profile_from_row
 from ashare_strategy.providers.csv_provider import CSVProvider
 from ashare_strategy.strategy import ScreeningEngine
@@ -449,6 +450,39 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("热点集中", news["headline"])
         self.assertGreaterEqual(len(news["hot_tags"]), 1)
         self.assertEqual(news["risks"][0]["tag"], "综合")
+
+    def test_rule_qa_answers_market_flow_question(self) -> None:
+        original_force_fallback = mvp_service.FORCE_FALLBACK
+        try:
+            mvp_service.FORCE_FALLBACK = True
+            answer = answer_question("今天有没有高切低？", StrategyInput(narrative="反转策略"))
+        finally:
+            mvp_service.FORCE_FALLBACK = original_force_fallback
+
+        self.assertEqual(answer["mode"], "规则问答")
+        self.assertIn("高切低", answer["answer"])
+
+    def test_rule_qa_answers_strategy_question(self) -> None:
+        original_force_fallback = mvp_service.FORCE_FALLBACK
+        try:
+            mvp_service.FORCE_FALLBACK = True
+            answer = answer_question("反转策略怎么量化？", StrategyInput(narrative="反转策略"))
+        finally:
+            mvp_service.FORCE_FALLBACK = original_force_fallback
+
+        self.assertIn("筑底", answer["answer"])
+        self.assertIn("回测口径", answer["answer"])
+
+    def test_rule_qa_answers_candidate_question(self) -> None:
+        original_force_fallback = mvp_service.FORCE_FALLBACK
+        try:
+            mvp_service.FORCE_FALLBACK = True
+            answer = answer_question("为什么 600036 被淘汰？", StrategyInput(narrative="主板策略"))
+        finally:
+            mvp_service.FORCE_FALLBACK = original_force_fallback
+
+        self.assertIn("600036", answer["answer"])
+        self.assertIn("关键数据", answer["answer"])
 
 
 if __name__ == "__main__":

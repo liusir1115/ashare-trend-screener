@@ -160,6 +160,19 @@
         </div>
       </section>
 
+      <section class="card qa-card">
+        <div class="section-head">
+          <h2>策略问答</h2>
+          <span class="scope-badge" id="qaMode">规则问答</span>
+        </div>
+        <form id="questionForm" class="qa-form">
+          <input id="questionInput" type="text" placeholder="例如：为什么第一只票被淘汰？今天有没有高切低？反转策略怎么量化？" />
+          <button type="submit" class="button">提问</button>
+        </form>
+        <div class="qa-answer" id="qaAnswer">这里会回答当前策略、候选结果、资金流和热点风险相关问题。</div>
+        <div class="flow-tags" id="qaSuggestions"></div>
+      </section>
+
       <section class="card results-card">
         <div class="section-head">
           <h2>候选结果</h2>

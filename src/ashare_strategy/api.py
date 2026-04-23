@@ -24,6 +24,7 @@ from ashare_strategy.config import StrategyConfig
 from ashare_strategy.market import MARKET_SCOPE_ALL, matches_market_scope
 from ashare_strategy.models import DailyBar, DailySnapshot
 from ashare_strategy.mvp_service import StrategyInput, build_mvp_payload
+from ashare_strategy.qa_service import answer_question
 from ashare_strategy.strategy import ScreeningEngine
 
 
@@ -106,6 +107,10 @@ if FastAPI is not None:
         playbook_id: str | None = None
 
 
+    class QuestionRequest(StrategyRequest):
+        question: str
+
+
 def _resolve_frontend_dir() -> Path | None:
     candidate_paths = [
         Path.cwd() / "frontend",
@@ -157,6 +162,22 @@ if frontend_dir is not None:
                 priority_signal=request.priority_signal,
                 playbook_id=request.playbook_id,
             )
+        )
+
+    @app.post("/api/mvp/question")
+    def question_answer(request: QuestionRequest) -> dict[str, Any]:
+        return answer_question(
+            request.question,
+            StrategyInput(
+                narrative=request.narrative,
+                market_scope=request.market_scope,
+                style_focus=request.style_focus,
+                holding_period=request.holding_period,
+                risk_tolerance=request.risk_tolerance,
+                valuation_weight=request.valuation_weight,
+                priority_signal=request.priority_signal,
+                playbook_id=request.playbook_id,
+            ),
         )
 
     @app.post("/screen")

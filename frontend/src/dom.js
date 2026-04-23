@@ -1,4 +1,5 @@
 export const strategyForm = document.getElementById("strategyForm");
+export const questionForm = document.getElementById("questionForm");
 
 export const pageElements = {
   narrativeInput: document.getElementById("strategyNarrative"),
@@ -32,6 +33,10 @@ export const pageElements = {
   newsHeadline: document.getElementById("newsHeadline"),
   newsTags: document.getElementById("newsTags"),
   newsList: document.getElementById("newsList"),
+  questionInput: document.getElementById("questionInput"),
+  qaAnswer: document.getElementById("qaAnswer"),
+  qaMode: document.getElementById("qaMode"),
+  qaSuggestions: document.getElementById("qaSuggestions"),
 };
 
 export function readStrategyForm(selectedPlaybookId) {

@@ -33,6 +33,23 @@ export async function loadStrategyPayload(formValues) {
   });
 }
 
+export async function askStrategyQuestion(formValues, question) {
+  return requestJson("/api/mvp/question", {
+    method: "POST",
+    body: JSON.stringify({
+      question,
+      narrative: formValues.narrative,
+      market_scope: formValues.scope,
+      style_focus: formValues.style,
+      holding_period: formValues.holding,
+      risk_tolerance: formValues.risk,
+      valuation_weight: formValues.valuation,
+      priority_signal: formValues.priority,
+      playbook_id: formValues.playbookId,
+    }),
+  });
+}
+
 export function buildFallbackPayload(localPlan, scope) {
   return {
     ...fallbackPayload,

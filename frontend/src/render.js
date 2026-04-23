@@ -308,6 +308,14 @@ export function renderMarketReview(elements, marketReview) {
   renderNewsReview(elements, review.news || {});
 }
 
+export function renderQuestionAnswer(elements, payload) {
+  elements.qaMode.textContent = payload.mode || "规则问答";
+  elements.qaAnswer.textContent = payload.answer || "暂时没有回答。";
+  elements.qaSuggestions.innerHTML = (payload.suggestions || [])
+    .map((item) => `<button type="button" class="flow-tag qa-suggestion" data-question="${item}">${item}</button>`)
+    .join("");
+}
+
 function buildFlowList(items) {
   if (!items.length) {
     return '<div class="flow-empty">暂无数据</div>';
