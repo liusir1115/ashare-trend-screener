@@ -29,6 +29,9 @@ export const pageElements = {
   topOutflowList: document.getElementById("topOutflowList"),
   rotationSummary: document.getElementById("rotationSummary"),
   rotationTags: document.getElementById("rotationTags"),
+  newsHeadline: document.getElementById("newsHeadline"),
+  newsTags: document.getElementById("newsTags"),
+  newsList: document.getElementById("newsList"),
 };
 
 export function readStrategyForm(selectedPlaybookId) {

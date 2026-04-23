@@ -168,6 +168,22 @@ export const fallbackPayload = {
         { name: "低空经济", change_pct: 4.2, net_inflow: -930000000, net_inflow_text: "-9.3亿", source: "演示概念资金" },
       ],
     },
+    news: {
+      headline: "热点集中在：政策、科技、商品",
+      hot_tags: [
+        { name: "政策", count: 3 },
+        { name: "科技", count: 2 },
+        { name: "商品", count: 2 },
+      ],
+      items: [
+        { title: "政策端继续强调稳增长和新质生产力方向", time: "盘后", tag: "政策", source: "演示快讯" },
+        { title: "海外科技股波动加大，AI 算力方向分歧提升", time: "盘后", tag: "科技", source: "演示快讯" },
+        { title: "原油和煤炭价格走强，资源方向关注度上升", time: "盘后", tag: "商品", source: "演示快讯" },
+      ],
+      risks: [
+        { title: "高位题材出现资金流出，短线追高风险增加", time: "盘后", tag: "风险", source: "演示快讯" },
+      ],
+    },
   },
   backtest: {
     hold_days: 15,

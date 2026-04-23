@@ -305,6 +305,7 @@ export function renderMarketReview(elements, marketReview) {
   elements.topOutflowList.innerHTML = buildFlowList(review.top_outflow || []);
   elements.rotationSummary.textContent = review.rotation?.summary || "暂时没有高切低判断。";
   elements.rotationTags.innerHTML = buildRotationTags(review.rotation || {});
+  renderNewsReview(elements, review.news || {});
 }
 
 function buildFlowList(items) {
@@ -342,4 +343,34 @@ function buildRotationTags(rotation) {
   }
 
   return tags.map((tag) => `<span class="flow-tag">${tag}</span>`).join("");
+}
+
+function renderNewsReview(elements, newsReview) {
+  elements.newsHeadline.textContent = newsReview.headline || "暂时没有热点摘要。";
+  elements.newsTags.innerHTML = (newsReview.hot_tags || [])
+    .map((item) => `<span class="flow-tag">${item.name} ${item.count}</span>`)
+    .join("");
+  elements.newsList.innerHTML = buildNewsList(newsReview.items || [], newsReview.risks || []);
+}
+
+function buildNewsList(newsItems, riskItems) {
+  const combined = [
+    ...riskItems.map((item) => ({ ...item, isRisk: true })),
+    ...newsItems.slice(0, 5).map((item) => ({ ...item, isRisk: false })),
+  ].slice(0, 7);
+
+  if (!combined.length) {
+    return '<div class="flow-empty">暂无快讯</div>';
+  }
+
+  return combined
+    .map(
+      (item) => `
+        <div class="news-item ${item.isRisk ? "news-risk" : ""}">
+          <span>${item.tag || "综合"}</span>
+          <p>${item.title}</p>
+        </div>
+      `,
+    )
+    .join("");
 }

@@ -6,7 +6,7 @@ import unittest
 
 import ashare_strategy.mvp_service as mvp_service
 import ashare_strategy.providers.akshare_provider as akshare_provider
-from ashare_strategy.market_review import SectorFlow, _build_flow_summary, build_demo_market_review
+from ashare_strategy.market_review import SectorFlow, _build_flow_summary, _build_news_summary, build_demo_market_review
 from ashare_strategy.analytics import build_snapshot_from_bars
 from ashare_strategy.backtest import BacktestEngine
 from ashare_strategy.market import classify_market_segment, matches_market_scope
@@ -187,6 +187,7 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("top_inflow", payload["market_review"])
         self.assertIn("top_outflow", payload["market_review"])
         self.assertIn("rotation", payload["market_review"])
+        self.assertIn("news", payload["market_review"])
 
     def test_strategy_changes_affect_fallback_results(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK
@@ -433,6 +434,21 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("headline", review)
         self.assertFalse(review["live_data"])
         self.assertGreaterEqual(len(review["top_inflow"]), 1)
+        self.assertIn("news", review)
+        self.assertGreaterEqual(len(review["news"]["items"]), 1)
+
+    def test_news_summary_groups_hot_tags_and_risks(self) -> None:
+        news = _build_news_summary(
+            news_items=[
+                type("NewsItem", (), {"title": "美联储释放降息信号", "time_text": "09:00", "tag": "海外", "source": "测试"})(),
+                type("NewsItem", (), {"title": "AI 算力板块继续活跃", "time_text": "10:00", "tag": "科技", "source": "测试"})(),
+                type("NewsItem", (), {"title": "高位题材出现下跌风险", "time_text": "11:00", "tag": "综合", "source": "测试"})(),
+            ],
+            board_changes=[],
+        )
+        self.assertIn("热点集中", news["headline"])
+        self.assertGreaterEqual(len(news["hot_tags"]), 1)
+        self.assertEqual(news["risks"][0]["tag"], "综合")
 
 
 if __name__ == "__main__":
