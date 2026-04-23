@@ -11,5 +11,12 @@ export function getCandidateStatus(item) {
 }
 
 export function formatPercent(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "--";
+  }
   return `${(value * 100).toFixed(1)}%`;
+}
+
+export function formatText(value) {
+  return value ? String(value) : "--";
 }

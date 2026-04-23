@@ -169,6 +169,12 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIsInstance(payload["results"]["items"], list)
         self.assertIn("playbooks", payload["strategy"])
         self.assertGreaterEqual(len(payload["strategy"]["playbooks"]), 1)
+        metrics = payload["results"]["items"][0]["metrics"]
+        self.assertIn("winner_rate", metrics)
+        self.assertIn("chip_source_label", metrics)
+        self.assertIn("limit_up", metrics)
+        self.assertIn("broken_limit", metrics)
+        self.assertIn("limit_open_times", metrics)
 
     def test_strategy_changes_affect_fallback_results(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK

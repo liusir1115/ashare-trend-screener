@@ -652,6 +652,8 @@ def _build_playbook_headline(narrative: str, playbooks: list[dict[str, Any]]) ->
 
 def _serialize_screening_result(result: Any) -> dict[str, Any]:
     snapshot = result.snapshot
+    chip_source = str(snapshot.extra.get("chip_source", "unknown"))
+    limit_source = str(snapshot.extra.get("limit_source", "unknown"))
     return {
         "symbol": result.symbol,
         "market_segment": snapshot.market_segment,
@@ -671,8 +673,39 @@ def _serialize_screening_result(result: Any) -> dict[str, Any]:
             "volume_ratio": round(snapshot.volume_ratio, 4),
             "overhead_pressure": round(snapshot.overhead_pressure, 4),
             "base_days": snapshot.base_days,
+            "winner_rate": round(snapshot.winner_rate, 4),
+            "cost_5pct": round(snapshot.cost_5pct, 4),
+            "cost_50pct": round(snapshot.cost_50pct, 4),
+            "cost_95pct": round(snapshot.cost_95pct, 4),
+            "chip_source": chip_source,
+            "chip_source_label": _chip_source_label(chip_source),
+            "limit_up": snapshot.limit_up,
+            "relimit": snapshot.relimit,
+            "broken_limit": bool(snapshot.extra.get("broken_limit", False)),
+            "first_limit_time": str(snapshot.extra.get("first_limit_time", "")),
+            "last_limit_time": str(snapshot.extra.get("last_limit_time", "")),
+            "limit_open_times": int(snapshot.extra.get("limit_open_times", 0) or 0),
+            "limit_reason": str(snapshot.extra.get("limit_reason", "")),
+            "limit_source": limit_source,
+            "limit_source_label": _limit_source_label(limit_source),
         },
     }
+
+
+def _chip_source_label(source: str) -> str:
+    if source == "akshare_stock_cyq_em":
+        return "东方财富筹码"
+    if source == "approx_close_quantiles":
+        return "近似筹码"
+    return "未知来源"
+
+
+def _limit_source_label(source: str) -> str:
+    if source == "akshare_stock_zt_pool_em":
+        return "东方财富涨停池"
+    if source == "spot_change_pct":
+        return "涨跌幅估算"
+    return "未知来源"
 
 
 def _cache_key(strategy: StrategyInput) -> str:

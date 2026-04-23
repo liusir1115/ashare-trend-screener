@@ -1,5 +1,5 @@
 import { getScopeLabel, pageCopy } from "./content.js";
-import { formatPercent, getCandidateStatus } from "./render-utils.js";
+import { formatPercent, formatText, getCandidateStatus } from "./render-utils.js";
 
 export function renderAdvice(container, adviceItems) {
   container.innerHTML = adviceItems
@@ -219,6 +219,7 @@ function buildCandidateSection(section) {
 function buildCandidateCard(item) {
   const status = getCandidateStatus(item);
   const reasons = item.passedFilters ? item.score.reasons : item.failedReasons;
+  const metrics = item.metrics;
 
   return `
     <article class="candidate-card">
@@ -235,13 +236,44 @@ function buildCandidateCard(item) {
       <div class="candidate-side">
         <div class="candidate-score">${item.score.total}</div>
         <div class="candidate-metrics">
-          <span>量比 ${item.metrics.volumeRatio}</span>
-          <span>上方压力 ${formatPercent(item.metrics.overheadPressure)}</span>
-          <span>筑底 ${item.metrics.baseDays} 天</span>
+          <span>量比 ${metrics.volumeRatio}</span>
+          <span>上方压力 ${formatPercent(metrics.overheadPressure)}</span>
+          <span>获利盘 ${formatPercent(metrics.winnerRate)}</span>
+          <span>筑底 ${metrics.baseDays} 天</span>
+        </div>
+        <div class="candidate-detail-grid">
+          <span>筹码：${formatText(metrics.chipSourceLabel)}</span>
+          <span>90成本：${formatText(metrics.cost5pct)} - ${formatText(metrics.cost95pct)}</span>
+          <span>涨停：${formatLimitStatus(metrics)}</span>
+          <span>封板：${formatLimitTimes(metrics)}</span>
         </div>
       </div>
     </article>
   `;
+}
+
+function formatLimitStatus(metrics) {
+  if (metrics.brokenLimit) {
+    return "炸板";
+  }
+
+  if (metrics.relimit) {
+    return `回封 ${metrics.limitOpenTimes || 0} 次`;
+  }
+
+  if (metrics.limitUp) {
+    return "涨停";
+  }
+
+  return "无";
+}
+
+function formatLimitTimes(metrics) {
+  if (!metrics.firstLimitTime && !metrics.lastLimitTime) {
+    return "--";
+  }
+
+  return `${formatText(metrics.firstLimitTime)} / ${formatText(metrics.lastLimitTime)}`;
 }
 
 export function renderResultsTable(container, resultItems) {
@@ -255,6 +287,8 @@ export function renderResultsTable(container, resultItems) {
           <td>${item.score.total}</td>
           <td>${item.metrics.volumeRatio}</td>
           <td>${formatPercent(item.metrics.overheadPressure)}</td>
+          <td>${formatPercent(item.metrics.winnerRate)}</td>
+          <td>${formatLimitStatus(item.metrics)}</td>
           <td>${item.metrics.baseDays}</td>
           <td><span class="pill ${status.className}">${status.label}</span></td>
         </tr>

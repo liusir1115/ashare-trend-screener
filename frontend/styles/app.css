@@ -518,6 +518,17 @@ select:focus {
   font-size: 13px;
 }
 
+.candidate-detail-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
 .mini-panel {
   display: grid;
   gap: 12px;
@@ -599,6 +610,10 @@ td {
 
   .candidate-side {
     min-width: auto;
+    text-align: left;
+  }
+
+  .candidate-detail-grid {
     text-align: left;
   }
 }
