@@ -23,6 +23,12 @@ export const pageElements = {
   candidateList: document.getElementById("candidateList"),
   resultsTableBody: document.getElementById("resultsTable"),
   backtestMetrics: document.getElementById("backtestMetrics"),
+  marketReviewStatus: document.getElementById("marketReviewStatus"),
+  marketReviewHeadline: document.getElementById("marketReviewHeadline"),
+  topInflowList: document.getElementById("topInflowList"),
+  topOutflowList: document.getElementById("topOutflowList"),
+  rotationSummary: document.getElementById("rotationSummary"),
+  rotationTags: document.getElementById("rotationTags"),
 };
 
 export function readStrategyForm(selectedPlaybookId) {

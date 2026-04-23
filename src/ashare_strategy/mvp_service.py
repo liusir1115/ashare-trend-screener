@@ -11,6 +11,7 @@ from typing import Any
 from ashare_strategy.config import StrategyConfig
 from ashare_strategy.market import MARKET_SCOPE_ALL
 from ashare_strategy.models import DailySnapshot
+from ashare_strategy.market_review import build_demo_market_review, build_market_review
 from ashare_strategy.mvp_text import (
     NarrativeDirectives,
     PRIORITY_LABELS,
@@ -783,10 +784,15 @@ def get_scope_results(strategy: StrategyInput) -> dict[str, Any]:
 
 def build_mvp_payload(strategy: StrategyInput) -> dict[str, Any]:
     config = _config_from_strategy(strategy)
+    try:
+        market_review = build_demo_market_review() if FORCE_FALLBACK else build_market_review()
+    except Exception:
+        market_review = build_demo_market_review()
     return {
         "generated_at": date.today().isoformat(),
         "strategy": build_strategy_plan(strategy),
         "results": get_scope_results(strategy),
+        "market_review": market_review,
         "backtest": {
             "hold_days": config.backtest.hold_days,
             "stop_loss": f"{config.backtest.stop_loss:.0%}",

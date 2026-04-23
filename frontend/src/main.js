@@ -7,6 +7,7 @@ import {
   renderCandidates,
   renderParsedRules,
   renderParameters,
+  renderMarketReview,
   renderPlaybooks,
   renderResultsTable,
   renderScope,
@@ -54,6 +55,7 @@ function applyPayloadToPage(payload, scope = getCurrentFormValues().scope) {
   renderParsedRules(pageElements.parsedRulesBox, strategyData.parsed_rules);
   renderParameters(pageElements.parameterGrid, strategyData.parameters);
   renderSummaryText(pageElements.strategySummaryBox, strategyData.summary);
+  renderMarketReview(pageElements, payload.market_review);
   renderScope(pageElements.scopeLabelText, pageElements.scopeNoteText, scope, resultsData.note);
   renderBacktest(pageElements.backtestMetrics, {
     holdDays: payload.backtest.hold_days,

@@ -296,3 +296,50 @@ export function renderResultsTable(container, resultItems) {
     })
     .join("");
 }
+
+export function renderMarketReview(elements, marketReview) {
+  const review = marketReview || {};
+  elements.marketReviewStatus.textContent = review.live_data ? "真实资金流" : "演示资金流";
+  elements.marketReviewHeadline.textContent = review.headline || "暂时没有资金流摘要。";
+  elements.topInflowList.innerHTML = buildFlowList(review.top_inflow || []);
+  elements.topOutflowList.innerHTML = buildFlowList(review.top_outflow || []);
+  elements.rotationSummary.textContent = review.rotation?.summary || "暂时没有高切低判断。";
+  elements.rotationTags.innerHTML = buildRotationTags(review.rotation || {});
+}
+
+function buildFlowList(items) {
+  if (!items.length) {
+    return '<div class="flow-empty">暂无数据</div>';
+  }
+
+  return items
+    .map(
+      (item) => `
+        <div class="flow-item">
+          <div>
+            <strong>${item.name}</strong>
+            <span>${item.source || ""}</span>
+          </div>
+          <div class="flow-number ${item.net_inflow >= 0 ? "flow-in" : "flow-out"}">
+            ${item.net_inflow_text}
+          </div>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function buildRotationTags(rotation) {
+  const lowLevelItems = rotation.low_level_inflow || [];
+  const highLevelItems = rotation.high_level_outflow || [];
+  const tags = [
+    ...lowLevelItems.map((item) => `低位承接：${item.name}`),
+    ...highLevelItems.map((item) => `高位流出：${item.name}`),
+  ];
+
+  if (!tags.length) {
+    return '<span class="flow-tag">暂未形成明显切换</span>';
+  }
+
+  return tags.map((tag) => `<span class="flow-tag">${tag}</span>`).join("");
+}

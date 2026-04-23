@@ -133,6 +133,29 @@
 
       <section class="card results-card">
         <div class="section-head">
+          <h2>盘后资金流</h2>
+          <span class="scope-badge" id="marketReviewStatus">等待数据</span>
+        </div>
+        <p class="market-review-headline" id="marketReviewHeadline">资金流摘要会显示在这里。</p>
+        <div class="market-review-grid">
+          <section>
+            <h3>流入靠前</h3>
+            <div class="flow-list" id="topInflowList"></div>
+          </section>
+          <section>
+            <h3>流出靠前</h3>
+            <div class="flow-list" id="topOutflowList"></div>
+          </section>
+          <section>
+            <h3>高切低判断</h3>
+            <p class="mini-text" id="rotationSummary"></p>
+            <div class="flow-tags" id="rotationTags"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="card results-card">
+        <div class="section-head">
           <h2>候选结果</h2>
         </div>
 

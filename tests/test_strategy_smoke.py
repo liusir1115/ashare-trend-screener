@@ -6,6 +6,7 @@ import unittest
 
 import ashare_strategy.mvp_service as mvp_service
 import ashare_strategy.providers.akshare_provider as akshare_provider
+from ashare_strategy.market_review import SectorFlow, _build_flow_summary, build_demo_market_review
 from ashare_strategy.analytics import build_snapshot_from_bars
 from ashare_strategy.backtest import BacktestEngine
 from ashare_strategy.market import classify_market_segment, matches_market_scope
@@ -156,15 +157,23 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("主板", plan["summary"])
 
     def test_mvp_payload_shape(self) -> None:
-        payload = build_mvp_payload(
-            StrategyInput(
-                narrative="测试科创板策略",
-                market_scope="star_market",
+        original_force_fallback = mvp_service.FORCE_FALLBACK
+        try:
+            mvp_service.FORCE_FALLBACK = True
+            mvp_service._RESULT_CACHE.clear()
+            payload = build_mvp_payload(
+                StrategyInput(
+                    narrative="测试科创板策略",
+                    market_scope="star_market",
+                )
             )
-        )
+        finally:
+            mvp_service.FORCE_FALLBACK = original_force_fallback
+            mvp_service._RESULT_CACHE.clear()
         self.assertIn("generated_at", payload)
         self.assertIn("strategy", payload)
         self.assertIn("results", payload)
+        self.assertIn("market_review", payload)
         self.assertIn("backtest", payload)
         self.assertIsInstance(payload["results"]["items"], list)
         self.assertIn("playbooks", payload["strategy"])
@@ -175,6 +184,9 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("limit_up", metrics)
         self.assertIn("broken_limit", metrics)
         self.assertIn("limit_open_times", metrics)
+        self.assertIn("top_inflow", payload["market_review"])
+        self.assertIn("top_outflow", payload["market_review"])
+        self.assertIn("rotation", payload["market_review"])
 
     def test_strategy_changes_affect_fallback_results(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK
@@ -400,6 +412,27 @@ class ScreeningSmokeTest(unittest.TestCase):
 
         self.assertIn("000001", provider._limit_up_cache)
         self.assertIn("600000", provider._broken_limit_cache)
+
+    def test_market_review_detects_high_low_rotation(self) -> None:
+        summary = _build_flow_summary(
+            [
+                SectorFlow("电力", 0.8, 1_000_000_000, "行业资金流"),
+                SectorFlow("半导体", 2.8, -900_000_000, "行业资金流"),
+            ],
+            [
+                SectorFlow("算力", 3.2, -1_200_000_000, "概念资金流"),
+                SectorFlow("煤炭", 0.7, 800_000_000, "行业资金流"),
+            ],
+        )
+        self.assertIn("高切低", summary["rotation"]["summary"])
+        self.assertEqual(summary["rotation"]["low_level_inflow"][0]["name"], "电力")
+        self.assertEqual(summary["rotation"]["high_level_outflow"][0]["name"], "算力")
+
+    def test_demo_market_review_shape(self) -> None:
+        review = build_demo_market_review()
+        self.assertIn("headline", review)
+        self.assertFalse(review["live_data"])
+        self.assertGreaterEqual(len(review["top_inflow"]), 1)
 
 
 if __name__ == "__main__":

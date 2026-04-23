@@ -142,6 +142,33 @@ export const fallbackPayload = {
       },
     ],
   },
+  market_review: {
+    trade_date: "2026-04-22",
+    live_data: false,
+    headline: "演示复盘：资金偏向低位防守和能源方向，高位题材有分歧。",
+    note: "当前为演示资金流，用来保证页面流程稳定。",
+    top_inflow: [
+      { name: "电力", change_pct: 0.8, net_inflow: 1620000000, net_inflow_text: "16.2亿", source: "演示行业资金" },
+      { name: "煤炭", change_pct: 1.1, net_inflow: 980000000, net_inflow_text: "9.8亿", source: "演示行业资金" },
+      { name: "中特估", change_pct: 0.9, net_inflow: 890000000, net_inflow_text: "8.9亿", source: "演示概念资金" },
+    ],
+    top_outflow: [
+      { name: "算力", change_pct: 3.4, net_inflow: -1250000000, net_inflow_text: "-12.5亿", source: "演示概念资金" },
+      { name: "低空经济", change_pct: 4.2, net_inflow: -930000000, net_inflow_text: "-9.3亿", source: "演示概念资金" },
+      { name: "半导体", change_pct: 2.2, net_inflow: -860000000, net_inflow_text: "-8.6亿", source: "演示行业资金" },
+    ],
+    rotation: {
+      summary: "出现高切低迹象：部分涨幅较高方向流出，低位或涨幅较小方向承接资金。",
+      low_level_inflow: [
+        { name: "电力", change_pct: 0.8, net_inflow: 1620000000, net_inflow_text: "16.2亿", source: "演示行业资金" },
+        { name: "煤炭", change_pct: 1.1, net_inflow: 980000000, net_inflow_text: "9.8亿", source: "演示行业资金" },
+      ],
+      high_level_outflow: [
+        { name: "算力", change_pct: 3.4, net_inflow: -1250000000, net_inflow_text: "-12.5亿", source: "演示概念资金" },
+        { name: "低空经济", change_pct: 4.2, net_inflow: -930000000, net_inflow_text: "-9.3亿", source: "演示概念资金" },
+      ],
+    },
+  },
   backtest: {
     hold_days: 15,
     stop_loss: "-7%",
