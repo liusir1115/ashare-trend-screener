@@ -37,6 +37,9 @@ export const pageElements = {
   qaAnswer: document.getElementById("qaAnswer"),
   qaMode: document.getElementById("qaMode"),
   qaSuggestions: document.getElementById("qaSuggestions"),
+  sourceStatusHeadline: document.getElementById("sourceStatusHeadline"),
+  sourceStatusGrid: document.getElementById("sourceStatusGrid"),
+  sourceTips: document.getElementById("sourceTips"),
 };
 
 export function readStrategyForm(selectedPlaybookId) {
@@ -53,7 +56,7 @@ export function readStrategyForm(selectedPlaybookId) {
 }
 
 export function scrollToResults() {
-  document.querySelector(".results-card")?.scrollIntoView({
+  document.getElementById("candidateResultsCard")?.scrollIntoView({
     behavior: "smooth",
     block: "start",
   });

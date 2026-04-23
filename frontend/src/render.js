@@ -316,6 +316,28 @@ export function renderQuestionAnswer(elements, payload) {
     .join("");
 }
 
+export function renderSourceStatus(elements, sourceStatus) {
+  const status = sourceStatus || {};
+  elements.sourceStatusHeadline.textContent =
+    status.headline || "这里会显示本次结果到底用了真实数据还是演示兜底。";
+  elements.sourceStatusGrid.innerHTML = (status.items || [])
+    .map(
+      (item) => `
+        <article class="source-status-item ${item.ok ? "source-ok" : "source-warn"}">
+          <div class="source-status-head">
+            <strong>${item.name}</strong>
+            <span>${item.state}</span>
+          </div>
+          <p>${item.detail}</p>
+        </article>
+      `,
+    )
+    .join("");
+  elements.sourceTips.innerHTML = (status.tips || [])
+    .map((item) => `<span>${item}</span>`)
+    .join("");
+}
+
 function buildFlowList(items) {
   if (!items.length) {
     return '<div class="flow-empty">暂无数据</div>';

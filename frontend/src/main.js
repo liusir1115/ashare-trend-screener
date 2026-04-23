@@ -11,6 +11,7 @@ import {
   renderPlaybooks,
   renderResultsTable,
   renderScope,
+  renderSourceStatus,
   renderSummaryGrid,
   renderSummaryText,
   renderQuestionAnswer,
@@ -57,6 +58,7 @@ function applyPayloadToPage(payload, scope = getCurrentFormValues().scope) {
   renderParameters(pageElements.parameterGrid, strategyData.parameters);
   renderSummaryText(pageElements.strategySummaryBox, strategyData.summary);
   renderMarketReview(pageElements, payload.market_review);
+  renderSourceStatus(pageElements, payload.source_status);
   renderScope(pageElements.scopeLabelText, pageElements.scopeNoteText, scope, resultsData.note);
   renderBacktest(pageElements.backtestMetrics, {
     holdDays: payload.backtest.hold_days,

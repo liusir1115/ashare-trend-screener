@@ -175,6 +175,7 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("strategy", payload)
         self.assertIn("results", payload)
         self.assertIn("market_review", payload)
+        self.assertIn("source_status", payload)
         self.assertIn("backtest", payload)
         self.assertIsInstance(payload["results"]["items"], list)
         self.assertIn("playbooks", payload["strategy"])
@@ -189,6 +190,7 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("top_outflow", payload["market_review"])
         self.assertIn("rotation", payload["market_review"])
         self.assertIn("news", payload["market_review"])
+        self.assertGreaterEqual(len(payload["source_status"]["items"]), 4)
 
     def test_strategy_changes_affect_fallback_results(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK

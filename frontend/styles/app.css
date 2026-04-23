@@ -693,6 +693,75 @@ select:focus {
   cursor: pointer;
 }
 
+.data-card {
+  margin-top: 18px;
+}
+
+.source-status-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.source-status-item {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.source-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.source-status-head strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.source-status-head span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.source-ok .source-status-head span {
+  background: var(--good);
+  color: var(--good-text);
+}
+
+.source-warn .source-status-head span {
+  background: var(--watch);
+  color: var(--watch-text);
+}
+
+.source-status-item p {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.source-tips {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.source-tips span {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .metric-value {
   font-weight: 700;
 }
@@ -738,6 +807,7 @@ td {
   .summary-grid,
   .advice-grid,
   .market-review-grid,
+  .source-status-grid,
   .playbook-grid {
     grid-template-columns: 1fr;
   }

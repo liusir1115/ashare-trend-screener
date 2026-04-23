@@ -185,6 +185,45 @@ export const fallbackPayload = {
       ],
     },
   },
+  source_status: {
+    headline: "当前是本地演示兜底，用来保证页面流程稳定。",
+    items: [
+      {
+        name: "候选股扫描",
+        state: "演示兜底",
+        detail: "后端不可用或 AKShare 暂时拿不到数据时，会先展示这套样例。",
+        ok: false,
+      },
+      {
+        name: "筹码分布",
+        state: "2/3 只真实筹码",
+        detail: "样例里混合展示东方财富筹码和近似筹码，方便你看页面标识。",
+        ok: true,
+      },
+      {
+        name: "涨停/炸板",
+        state: "1/3 只涨停池命中",
+        detail: "真实上线后会优先读取东方财富涨停池和炸板池。",
+        ok: true,
+      },
+      {
+        name: "资金流与热点",
+        state: "演示兜底",
+        detail: "真实模式会读取 AKShare 的行业/概念资金流和快讯数据。",
+        ok: false,
+      },
+      {
+        name: "策略问答",
+        state: "免费规则版",
+        detail: "能回答策略量化、候选原因、资金流和热点风险。",
+        ok: true,
+      },
+    ],
+    tips: [
+      "如果这里显示演示兜底，只能说明页面能用，不能当作真实盘后扫描。",
+      "真正测试策略时，优先看筹码来源是否显示为东方财富筹码。",
+    ],
+  },
   backtest: {
     hold_days: 15,
     stop_loss: "-7%",
