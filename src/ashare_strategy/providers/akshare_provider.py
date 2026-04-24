@@ -7,6 +7,7 @@ from typing import Any
 from ashare_strategy.analytics import build_snapshot_from_bars
 from ashare_strategy.market import MARKET_SCOPE_ALL, matches_market_scope
 from ashare_strategy.models import DailyBar, DailySnapshot
+from ashare_strategy.retry import load_with_retry
 
 
 def _require_akshare() -> Any:
@@ -157,7 +158,7 @@ class AKShareProvider:
         ak = _require_akshare()
         code = _normalize_symbol(symbol)
         try:
-            frame = ak.stock_cyq_em(symbol=code, adjust=self.adjust)
+            frame = load_with_retry(lambda: ak.stock_cyq_em(symbol=code, adjust=self.adjust))
         except Exception:
             return None
         if frame is None or frame.empty:
@@ -175,12 +176,14 @@ class AKShareProvider:
     def fetch_daily_bars(self, symbol: str, start_date: date, end_date: date) -> list[DailyBar]:
         ak = _require_akshare()
         code = _normalize_symbol(symbol)
-        frame = ak.stock_zh_a_hist(
-            symbol=code,
-            period="daily",
-            start_date=start_date.strftime("%Y%m%d"),
-            end_date=end_date.strftime("%Y%m%d"),
-            adjust=self.adjust,
+        frame = load_with_retry(
+            lambda: ak.stock_zh_a_hist(
+                symbol=code,
+                period="daily",
+                start_date=start_date.strftime("%Y%m%d"),
+                end_date=end_date.strftime("%Y%m%d"),
+                adjust=self.adjust,
+            )
         )
         if frame is None or frame.empty:
             return []
@@ -218,7 +221,7 @@ class AKShareProvider:
             return
         ak = _require_akshare()
         try:
-            frame = ak.stock_zh_a_spot_em()
+            frame = load_with_retry(ak.stock_zh_a_spot_em)
         except Exception:
             self._spot_cache = {}
             return
@@ -249,7 +252,7 @@ class AKShareProvider:
 
     def _load_code_row_cache(self, loader: Any) -> dict[str, dict[str, Any]]:
         try:
-            frame = loader()
+            frame = load_with_retry(loader)
         except Exception:
             return {}
         if frame is None or frame.empty:

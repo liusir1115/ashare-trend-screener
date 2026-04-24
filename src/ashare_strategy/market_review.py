@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Callable
 
+from ashare_strategy.retry import load_with_retry
+
 
 def _require_akshare() -> Any:
     try:
@@ -55,7 +57,7 @@ class NewsItem:
 
 def _read_sector_flows(loader: Callable[[], Any], source: str) -> list[SectorFlow]:
     try:
-        frame = loader()
+        frame = load_with_retry(loader)
     except Exception:
         return []
     if frame is None or frame.empty:
@@ -79,7 +81,7 @@ def _read_sector_flows(loader: Callable[[], Any], source: str) -> list[SectorFlo
 
 def _read_news_items(loader: Callable[[], Any], source: str, limit: int = 8) -> list[NewsItem]:
     try:
-        frame = loader()
+        frame = load_with_retry(loader)
     except Exception:
         return []
     if frame is None or frame.empty:
@@ -105,7 +107,7 @@ def _read_news_items(loader: Callable[[], Any], source: str, limit: int = 8) -> 
 
 def _read_board_changes(loader: Callable[[], Any], limit: int = 8) -> list[NewsItem]:
     try:
-        frame = loader()
+        frame = load_with_retry(loader)
     except Exception:
         return []
     if frame is None or frame.empty:

@@ -15,6 +15,7 @@ from ashare_strategy.mvp_service import StrategyInput, build_mvp_payload, build_
 from ashare_strategy.qa_service import answer_question
 from ashare_strategy.providers.akshare_provider import AKShareProvider, _chip_profile_from_row
 from ashare_strategy.providers.csv_provider import CSVProvider
+from ashare_strategy.retry import load_with_retry
 from ashare_strategy.strategy import ScreeningEngine
 
 
@@ -452,6 +453,23 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("热点集中", news["headline"])
         self.assertGreaterEqual(len(news["hot_tags"]), 1)
         self.assertEqual(news["risks"][0]["tag"], "综合")
+
+    def test_retry_helper_can_retry_once_then_succeed(self) -> None:
+        attempts = {"count": 0}
+
+        def flaky_loader() -> str:
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise RuntimeError("temporary error")
+            return "ok"
+
+        result = load_with_retry(flaky_loader, retries=2, delay_seconds=0)
+        self.assertEqual(result, "ok")
+        self.assertEqual(attempts["count"], 2)
+
+    def test_retry_helper_raises_last_error(self) -> None:
+        with self.assertRaises(RuntimeError):
+            load_with_retry(lambda: (_ for _ in ()).throw(RuntimeError("still failing")), retries=2, delay_seconds=0)
 
     def test_rule_qa_answers_market_flow_question(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK
