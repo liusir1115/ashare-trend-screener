@@ -33,6 +33,8 @@ export const pageElements = {
   newsHeadline: document.getElementById("newsHeadline"),
   newsTags: document.getElementById("newsTags"),
   newsList: document.getElementById("newsList"),
+  newsCandidateNote: document.getElementById("newsCandidateNote"),
+  newsCandidateLinks: document.getElementById("newsCandidateLinks"),
   questionInput: document.getElementById("questionInput"),
   qaAnswer: document.getElementById("qaAnswer"),
   qaMode: document.getElementById("qaMode"),

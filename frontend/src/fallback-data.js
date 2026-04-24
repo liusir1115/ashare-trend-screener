@@ -145,8 +145,10 @@ export const fallbackPayload = {
   market_review: {
     trade_date: "2026-04-22",
     live_data: false,
+    flow_live_data: false,
+    news_live_data: false,
     headline: "演示复盘：资金偏向低位防守和能源方向，高位题材有分歧。",
-    note: "当前为演示资金流，用来保证页面流程稳定。",
+    note: "当前为演示资金流和演示快讯，用来保证页面流程稳定。",
     top_inflow: [
       { name: "电力", change_pct: 0.8, net_inflow: 1620000000, net_inflow_text: "16.2亿", source: "演示行业资金" },
       { name: "煤炭", change_pct: 1.1, net_inflow: 980000000, net_inflow_text: "9.8亿", source: "演示行业资金" },
@@ -183,6 +185,11 @@ export const fallbackPayload = {
       risks: [
         { title: "高位题材出现资金流出，短线追高风险增加", time: "盘后", tag: "风险", source: "演示快讯" },
       ],
+      candidate_note: "下面这些票是当天候选池里更值得和新闻一起看的。",
+      candidate_links: [
+        { symbol: "600276.SH", status: "通过", note: "当前已经通过筛选，适合配合今天的热点继续跟踪。" },
+        { symbol: "600036.SH", status: "观察", note: "当前分数靠前，可结合新闻催化继续观察。" },
+      ],
     },
   },
   source_status: {
@@ -207,9 +214,15 @@ export const fallbackPayload = {
         ok: true,
       },
       {
-        name: "资金流与热点",
+        name: "新闻快讯",
         state: "演示兜底",
-        detail: "真实模式会读取 AKShare 的行业/概念资金流和快讯数据。",
+        detail: "真实模式会读取 AKShare 的新闻快讯和板块异动。",
+        ok: false,
+      },
+      {
+        name: "资金流复盘",
+        state: "演示兜底",
+        detail: "真实模式会读取 AKShare 的行业/概念资金流和高切低线索。",
         ok: false,
       },
       {

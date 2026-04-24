@@ -632,6 +632,51 @@ select:focus {
   margin-top: 12px;
 }
 
+.news-candidate-note {
+  margin-top: 14px;
+}
+
+.news-candidate-links {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.news-candidate-item {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.news-candidate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.news-candidate-head strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.news-candidate-head span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.news-candidate-item p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .news-item {
   display: grid;
   gap: 4px;

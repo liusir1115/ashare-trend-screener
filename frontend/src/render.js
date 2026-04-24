@@ -299,7 +299,7 @@ export function renderResultsTable(container, resultItems) {
 
 export function renderMarketReview(elements, marketReview) {
   const review = marketReview || {};
-  elements.marketReviewStatus.textContent = review.live_data ? "真实资金流" : "演示资金流";
+  elements.marketReviewStatus.textContent = getMarketReviewStatus(review);
   elements.marketReviewHeadline.textContent = review.headline || "暂时没有资金流摘要。";
   elements.topInflowList.innerHTML = buildFlowList(review.top_inflow || []);
   elements.topOutflowList.innerHTML = buildFlowList(review.top_outflow || []);
@@ -381,6 +381,8 @@ function renderNewsReview(elements, newsReview) {
     .map((item) => `<span class="flow-tag">${item.name} ${item.count}</span>`)
     .join("");
   elements.newsList.innerHTML = buildNewsList(newsReview.items || [], newsReview.risks || []);
+  elements.newsCandidateNote.textContent = newsReview.candidate_note || "";
+  elements.newsCandidateLinks.innerHTML = buildNewsCandidateLinks(newsReview.candidate_links || []);
 }
 
 function buildNewsList(newsItems, riskItems) {
@@ -403,4 +405,37 @@ function buildNewsList(newsItems, riskItems) {
       `,
     )
     .join("");
+}
+
+function buildNewsCandidateLinks(items) {
+  if (!items.length) {
+    return '<div class="flow-empty">当前还没有特别贴近热点的候选股。</div>';
+  }
+
+  return items
+    .map(
+      (item) => `
+        <article class="news-candidate-item">
+          <div class="news-candidate-head">
+            <strong>${item.symbol}</strong>
+            <span>${item.status}</span>
+          </div>
+          <p>${item.note}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function getMarketReviewStatus(review) {
+  if (review.flow_live_data && review.news_live_data) {
+    return "真实复盘";
+  }
+  if (review.news_live_data) {
+    return "新闻真实";
+  }
+  if (review.flow_live_data) {
+    return "资金流真实";
+  }
+  return "演示复盘";
 }

@@ -160,6 +160,8 @@ def _build_news_summary(news_items: list[NewsItem], board_changes: list[NewsItem
         "hot_tags": [{"name": tag, "count": count} for tag, count in hot_tags],
         "items": [_serialize_news(item) for item in combined[:10]],
         "risks": [_serialize_news(item) for item in risk_items],
+        "candidate_links": [],
+        "candidate_note": "这里会结合候选池补充更值得联动观察的股票。",
     }
 
 
@@ -213,6 +215,27 @@ def _serialize_flow(flow: SectorFlow) -> dict[str, Any]:
     }
 
 
+def _demo_news_summary() -> dict[str, Any]:
+    return {
+        "headline": "热点集中在：政策、科技、商品",
+        "hot_tags": [
+            {"name": "政策", "count": 3},
+            {"name": "科技", "count": 2},
+            {"name": "商品", "count": 2},
+        ],
+        "items": [
+            {"title": "政策端继续强调稳增长和新质生产力方向", "time": "盘后", "tag": "政策", "source": "演示快讯"},
+            {"title": "海外科技股波动加大，AI 算力方向分歧提升", "time": "盘后", "tag": "科技", "source": "演示快讯"},
+            {"title": "原油和煤炭价格走强，资源方向关注度上升", "time": "盘后", "tag": "商品", "source": "演示快讯"},
+        ],
+        "risks": [
+            {"title": "高位题材出现资金流出，短线追高风险增加", "time": "盘后", "tag": "风险", "source": "演示快讯"}
+        ],
+        "candidate_links": [],
+        "candidate_note": "这里会结合候选池补充更值得联动观察的股票。",
+    }
+
+
 def build_demo_market_review() -> dict[str, Any]:
     industry_flows = [
         SectorFlow("电力", 0.8, 1_620_000_000, "演示行业资金"),
@@ -231,24 +254,11 @@ def build_demo_market_review() -> dict[str, Any]:
         {
             "trade_date": date.today().isoformat(),
             "live_data": False,
+            "flow_live_data": False,
+            "news_live_data": False,
             "headline": "演示复盘：资金偏向低位防守和能源方向，高位题材有分歧。",
-            "note": "当前为演示资金流，用来保证页面流程稳定。",
-            "news": {
-                "headline": "热点集中在：政策、科技、商品",
-                "hot_tags": [
-                    {"name": "政策", "count": 3},
-                    {"name": "科技", "count": 2},
-                    {"name": "商品", "count": 2},
-                ],
-                "items": [
-                    {"title": "政策端继续强调稳增长和新质生产力方向", "time": "盘后", "tag": "政策", "source": "演示快讯"},
-                    {"title": "海外科技股波动加大，AI 算力方向分歧提升", "time": "盘后", "tag": "科技", "source": "演示快讯"},
-                    {"title": "原油和煤炭价格走强，资源方向关注度上升", "time": "盘后", "tag": "商品", "source": "演示快讯"},
-                ],
-                "risks": [
-                    {"title": "高位题材出现资金流出，短线追高风险增加", "time": "盘后", "tag": "风险", "source": "演示快讯"}
-                ],
-            },
+            "note": "当前为演示资金流和演示快讯，用来保证页面流程稳定。",
+            "news": _demo_news_summary(),
         }
     )
     return summary
@@ -265,20 +275,50 @@ def build_market_review() -> dict[str, Any]:
         "概念资金流",
     )
 
-    if not industry_flows and not concept_flows:
-        return build_demo_market_review()
-
     news_items = _read_news_items(lambda: ak.stock_info_global_em(), "全球财经快讯")
     board_changes = _read_board_changes(lambda: ak.stock_board_change_em())
-    summary = _build_flow_summary(industry_flows, concept_flows)
+
+    flow_live_data = bool(industry_flows or concept_flows)
+    news_live_data = bool(news_items or board_changes)
+    summary = _build_flow_summary(industry_flows, concept_flows) if flow_live_data else _build_flow_summary(
+        [
+            SectorFlow("电力", 0.8, 1_620_000_000, "演示行业资金"),
+            SectorFlow("煤炭", 1.1, 980_000_000, "演示行业资金"),
+            SectorFlow("算力", 3.4, -1_250_000_000, "演示概念资金"),
+            SectorFlow("半导体", 2.2, -860_000_000, "演示行业资金"),
+            SectorFlow("银行", 0.4, 720_000_000, "演示行业资金"),
+        ],
+        [
+            SectorFlow("中特估", 0.9, 890_000_000, "演示概念资金"),
+            SectorFlow("低空经济", 4.2, -930_000_000, "演示概念资金"),
+            SectorFlow("储能", 1.3, 620_000_000, "演示概念资金"),
+        ],
+    )
+    news_summary = _build_news_summary(news_items, board_changes) if news_live_data else _demo_news_summary()
     leader = summary["top_inflow"][0]["name"] if summary["top_inflow"] else "暂无明显主线"
+
+    if flow_live_data and news_live_data:
+        headline = f"盘后资金主线：{leader} 方向资金靠前。"
+        note = "资金流和新闻都来自 AKShare。"
+    elif flow_live_data:
+        headline = f"盘后资金主线：{leader} 方向资金靠前。"
+        note = "资金流来自 AKShare；新闻暂时用演示快讯。"
+    elif news_live_data:
+        headline = "新闻快讯已切到真实数据，资金流暂时保留演示兜底。"
+        note = "新闻来自 AKShare；资金流暂时用演示数据。"
+    else:
+        headline = "演示复盘：资金偏向低位防守和能源方向，高位题材有分歧。"
+        note = "当前为演示资金流和演示快讯，用来保证页面流程稳定。"
+
     summary.update(
         {
             "trade_date": date.today().isoformat(),
-            "live_data": True,
-            "headline": f"盘后资金主线：{leader} 方向资金靠前。",
-            "note": "资金流来自 AKShare 东方财富板块资金流接口。",
-            "news": _build_news_summary(news_items, board_changes),
+            "live_data": flow_live_data and news_live_data,
+            "flow_live_data": flow_live_data,
+            "news_live_data": news_live_data,
+            "headline": headline,
+            "note": note,
+            "news": news_summary,
         }
     )
     return summary

@@ -191,7 +191,9 @@ class ScreeningSmokeTest(unittest.TestCase):
         self.assertIn("top_outflow", payload["market_review"])
         self.assertIn("rotation", payload["market_review"])
         self.assertIn("news", payload["market_review"])
-        self.assertGreaterEqual(len(payload["source_status"]["items"]), 4)
+        self.assertIn("candidate_links", payload["market_review"]["news"])
+        self.assertIn("candidate_note", payload["market_review"]["news"])
+        self.assertGreaterEqual(len(payload["source_status"]["items"]), 5)
 
     def test_strategy_changes_affect_fallback_results(self) -> None:
         original_force_fallback = mvp_service.FORCE_FALLBACK
@@ -437,9 +439,12 @@ class ScreeningSmokeTest(unittest.TestCase):
         review = build_demo_market_review()
         self.assertIn("headline", review)
         self.assertFalse(review["live_data"])
+        self.assertFalse(review["flow_live_data"])
+        self.assertFalse(review["news_live_data"])
         self.assertGreaterEqual(len(review["top_inflow"]), 1)
         self.assertIn("news", review)
         self.assertGreaterEqual(len(review["news"]["items"]), 1)
+        self.assertIn("candidate_links", review["news"])
 
     def test_news_summary_groups_hot_tags_and_risks(self) -> None:
         news = _build_news_summary(
