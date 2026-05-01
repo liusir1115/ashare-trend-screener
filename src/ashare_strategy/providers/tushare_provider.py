@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from ashare_strategy.models import DailyBar, DailySnapshot
+from ashare_strategy.core.models import DailyBar, DailySnapshot
 
 
 @dataclass(slots=True)
@@ -22,4 +22,3 @@ class TushareProvider:
         raise NotImplementedError(
             "Implement this after wiring your Tushare token and local bar cache."
         )
-

@@ -4,19 +4,19 @@ from datetime import date, timedelta
 from pathlib import Path
 import unittest
 
-import ashare_strategy.mvp_service as mvp_service
+import ashare_strategy.services.mvp_page_service as mvp_service
 import ashare_strategy.providers.akshare_provider as akshare_provider
-from ashare_strategy.market_review import SectorFlow, _build_flow_summary, _build_news_summary, build_demo_market_review
-from ashare_strategy.analytics import build_snapshot_from_bars
-from ashare_strategy.backtest import BacktestEngine
-from ashare_strategy.market import classify_market_segment, matches_market_scope
-from ashare_strategy.models import DailyBar, DailySnapshot
-from ashare_strategy.mvp_service import StrategyInput, build_mvp_payload, build_strategy_plan
-from ashare_strategy.qa_service import answer_question
+from ashare_strategy.repositories.market_review_repository import SectorFlow, _build_flow_summary, _build_news_summary, build_demo_market_review
+from ashare_strategy.utils.snapshot_builder import build_snapshot_from_bars
+from ashare_strategy.core.backtest import BacktestEngine
+from ashare_strategy.utils.market_scope import classify_market_segment, matches_market_scope
+from ashare_strategy.core.models import DailyBar, DailySnapshot
+from ashare_strategy.services.mvp_page_service import StrategyInput, build_mvp_payload, build_strategy_plan
+from ashare_strategy.services.qa_service import answer_question
 from ashare_strategy.providers.akshare_provider import AKShareProvider, _chip_profile_from_row
 from ashare_strategy.providers.csv_provider import CSVProvider
-from ashare_strategy.retry import load_with_retry
-from ashare_strategy.strategy import ScreeningEngine
+from ashare_strategy.utils.retry import load_with_retry
+from ashare_strategy.core.scoring import ScreeningEngine
 
 
 class ScreeningSmokeTest(unittest.TestCase):

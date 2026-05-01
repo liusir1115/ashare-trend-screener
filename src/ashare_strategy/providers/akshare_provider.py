@@ -4,10 +4,10 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from ashare_strategy.analytics import build_snapshot_from_bars
-from ashare_strategy.market import MARKET_SCOPE_ALL, matches_market_scope
-from ashare_strategy.models import DailyBar, DailySnapshot
-from ashare_strategy.retry import load_with_retry
+from ashare_strategy.utils.snapshot_builder import build_snapshot_from_bars
+from ashare_strategy.utils.market_scope import MARKET_SCOPE_ALL, matches_market_scope
+from ashare_strategy.core.models import DailyBar, DailySnapshot
+from ashare_strategy.utils.retry import load_with_retry
 
 
 def _require_akshare() -> Any:
@@ -79,33 +79,45 @@ class AKShareProvider:
     neutral_hot_score: float = 0.50
     neutral_industry_ratio: float = 0.95
     _spot_cache: dict[str, dict[str, Any]] = field(default_factory=dict, init=False)
+    _universe_cache: list[str] | None = field(default=None, init=False)
     _limit_up_cache: dict[str, dict[str, Any]] = field(default_factory=dict, init=False)
     _broken_limit_cache: dict[str, dict[str, Any]] = field(default_factory=dict, init=False)
     _limit_cache_date: date | None = field(default=None, init=False)
 
     def fetch_daily_snapshots(self, trade_date: date) -> list[DailySnapshot]:
+        snapshots, _meta = self.fetch_daily_snapshot_batch(trade_date)
+        return snapshots
+
+    def fetch_daily_snapshot_batch(self, trade_date: date) -> tuple[list[DailySnapshot], dict[str, Any]]:
         today = date.today()
         if trade_date > today:
             raise ValueError("trade_date cannot be in the future")
         self._load_spot_cache()
         self._load_limit_pool_cache(trade_date)
-        codes = self.symbols or list(self._spot_cache.keys())
-        codes = [code for code in codes if matches_market_scope(code, self.market_scope)]
+        codes = self._load_symbol_universe()
         if not codes:
             raise RuntimeError(
-                "No symbols available for AKShare scan. "
-                "Pass an explicit symbols list or retry when spot cache is reachable."
+                "No symbols available for AKShare batch scan. "
+                "The code list endpoint may be unavailable."
             )
-        if self.max_symbols is not None:
-            codes = codes[: self.max_symbols]
 
         snapshots: list[DailySnapshot] = []
+        failed_codes: list[str] = []
         for code in codes:
             try:
                 snapshots.append(self.fetch_symbol_snapshot(code, trade_date))
             except Exception:
+                failed_codes.append(code)
                 continue
-        return snapshots
+        return snapshots, {
+            "requested_symbol_count": len(codes),
+            "snapshot_count": len(snapshots),
+            "failed_symbol_count": len(failed_codes),
+            "spot_cache_live": bool(self._spot_cache),
+            "universe_source": "explicit_symbols" if self.symbols else "akshare_stock_info_a_code_name",
+            "market_scope": self.market_scope,
+            "trade_date": trade_date.isoformat(),
+        }
 
     def fetch_symbol_snapshot(self, symbol: str, trade_date: date) -> DailySnapshot:
         code = _normalize_symbol(symbol)
@@ -235,6 +247,30 @@ class AKShareProvider:
             if code:
                 cache[code] = row
         self._spot_cache = cache
+
+    def _load_symbol_universe(self) -> list[str]:
+        if self._universe_cache is not None:
+            return self._universe_cache
+
+        if self.symbols:
+            codes = [_normalize_symbol(code) for code in self.symbols]
+        else:
+            ak = _require_akshare()
+            frame = load_with_retry(ak.stock_info_a_code_name)
+            if frame is None or frame.empty:
+                raise RuntimeError("AKShare code list endpoint returned no rows")
+            rows = frame.to_dict(orient="records")
+            codes = []
+            for row in rows:
+                code = _normalize_symbol(str(_pick(row, "code", "代码", "股票代码") or ""))
+                if len(code) == 6 and code.isdigit():
+                    codes.append(code)
+
+        filtered_codes = [code for code in codes if matches_market_scope(code, self.market_scope)]
+        if self.max_symbols is not None:
+            filtered_codes = filtered_codes[: self.max_symbols]
+        self._universe_cache = filtered_codes
+        return self._universe_cache
 
     def _load_limit_pool_cache(self, trade_date: date) -> None:
         if self._limit_cache_date == trade_date:

@@ -1,0 +1,51 @@
+export const fallbackPayload = {
+  generated_at: "2026-04-22",
+  strategy: {
+    playbook_headline: "系统会先给出几种可量化方案，你可以先选一套再继续看结果。",
+    selected_playbook_id: null,
+    recommended_playbook_id: "balanced_default",
+    playbooks: [
+      { id: "balanced_default", title: "平衡试探型", thesis: "先用一套中性参数把方向跑通，再决定往哪边加码。", fit_for: "适合想法还不够具体时先验证方向。", highlights: ["风险平衡", "波段持有", "先在主板验证"] },
+      { id: "chip_first", title: "筹码优先型", thesis: "先把上方压力和筹码干净程度放在第一位。", fit_for: "适合特别看重上方筹码的人。", highlights: ["上方压力更严", "筹码结构优先", "容忍更少噪音"] },
+      { id: "trend_first", title: "趋势确认型", thesis: "先确认均线、斜率和量能，再决定是否上车。", fit_for: "适合偏右侧确认的人。", highlights: ["均线多头优先", "放量确认更严", "右侧交易"] },
+    ],
+    advice: [
+      { title: "推荐市场", value: "先测主板", detail: "先把主板规则跑顺，再扩展到别的市场。" },
+      { title: "上方压力", value: "4% - 6%", detail: "先用较稳的压力区间做第一轮验证。" },
+      { title: "核心驱动", value: "筹码结构", detail: "先让一个主信号决定结果，再叠加其他过滤。" },
+      { title: "量比门槛", value: ">= 1.8", detail: "突破型策略建议先看放量是否充足。" },
+    ],
+    parsed_rules: [{ group: "系统判断", label: "当前为演示模式" }, { group: "系统判断", label: "暂时没有读取你的实时文字约束" }],
+    parameters: [
+      { label: "上方筹码压力", value: "4% - 6%", hint: "风险越保守，这个阈值越要收紧。" },
+      { label: "放量标准", value: ">= 1.8", hint: "量比越高，突破确认通常越强。" },
+      { label: "筑底时长", value: "60 - 120 天", hint: "底部整理不够，趋势持续性通常会偏弱。" },
+      { label: "估值要求", value: "不过热即可", hint: "第一版可以先别把估值卡得太死。" },
+    ],
+    summary: "当前是稳定演示模式。后续接入更完整数据后，这里会自动切到真实扫描结果。",
+  },
+  results: {
+    label: "主板",
+    note: "当前是演示数据模式，用来保证网页流程稳定可用。",
+    live_data: false,
+    items: [],
+  },
+  market_review: {
+    trade_date: "2026-04-22",
+    live_data: false,
+    flow_live_data: false,
+    news_live_data: false,
+    headline: "演示复盘：资金偏向低位防守和能源方向，高位题材有分歧。",
+    note: "当前为演示资金流和演示快讯，用来保证页面流程稳定。",
+    top_inflow: [],
+    top_outflow: [],
+    rotation: { summary: "", low_level_inflow: [], high_level_outflow: [] },
+    news: { headline: "", hot_tags: [], items: [], risks: [], candidate_note: "", candidate_links: [] },
+  },
+  source_status: {
+    headline: "当前是本地演示兜底，用来保证页面流程稳定。",
+    items: [],
+    tips: [],
+  },
+  backtest: { hold_days: 15, stop_loss: "-7%", take_profit: "18%", max_positions: 10 },
+};

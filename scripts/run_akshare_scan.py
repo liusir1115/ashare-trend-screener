@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from ashare_strategy import load_strategy_config
-from ashare_strategy.market import MARKET_SCOPE_ALL, VALID_MARKET_SCOPES
+from ashare_strategy.core.scoring import ScreeningEngine
 from ashare_strategy.providers.akshare_provider import AKShareProvider
-from ashare_strategy.strategy import ScreeningEngine
+from ashare_strategy.utils.market_scope import MARKET_SCOPE_ALL, VALID_MARKET_SCOPES
 
 
 def serialize_result(result: Any) -> dict[str, Any]:

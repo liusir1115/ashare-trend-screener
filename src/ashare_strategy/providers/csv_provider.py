@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, get_type_hints
 
-from ashare_strategy.models import DailyBar, DailySnapshot
+from ashare_strategy.core.models import DailyBar, DailySnapshot
 
 
 def _coerce_value(raw: str, annotation: Any) -> Any:

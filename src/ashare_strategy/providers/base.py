@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Protocol
 
-from ashare_strategy.models import DailyBar, DailySnapshot
+from ashare_strategy.core.models import DailyBar, DailySnapshot
 
 
 class MarketDataProvider(Protocol):
@@ -12,4 +12,3 @@ class MarketDataProvider(Protocol):
 
     def fetch_daily_bars(self, symbol: str, start_date: date, end_date: date) -> list[DailyBar]:
         """Return normalized daily bars for backtesting."""
-
